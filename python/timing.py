@@ -208,7 +208,7 @@ class Timing:
             [mhdlist, crlist, scalarlist, particlelist, ["Primitives"], otherlist],
         ):
             # print(name, tt["TimeIntegrator"][list(sel)].mean().sum())
-            timing[name] = tt["TimeIntegrator"][list(sel)].sum(axis=1)/dncycle
+            timing[name] = tt["TimeIntegrator"][list(sel)].sum(axis=1) / dncycle
 
         op_mhdlist = [
             k for k in optasklist if ("Hydro" in k or "Field" in k or "EMF" in k)
@@ -227,7 +227,8 @@ class Timing:
             - set(op_scalarlist)
             if "Particle" in k
         ]
-        op_coolinglist = [            k
+        op_coolinglist = [
+            k
             for k in set(optasklist)
             - set(op_mhdlist)
             - set(op_crlist)
@@ -258,12 +259,13 @@ class Timing:
             ],
         ):
             # print(name, tt["OperatorSplitTaskList"][list(sel)].mean().sum())
-            timing[name] += tt["OperatorSplitTaskList"][list(sel)].sum(axis=1)/dncycle
-        timing["Cooling"] = tt["OperatorSplitTaskList"][list(op_coolinglist)].sum(axis=1)/dncycle
+            timing[name] += tt["OperatorSplitTaskList"][list(sel)].sum(axis=1) / dncycle
+        timing["Cooling"] = (
+            tt["OperatorSplitTaskList"][list(op_coolinglist)].sum(axis=1) / dncycle
+        )
 
         if not plot:
             return timing
-
 
         fig, axes = plt.subplots(1, 2, figsize=(8, 3))
 
@@ -281,7 +283,7 @@ class Timing:
         plt.sca(axes[1])
         ncells = np.prod(self.domain["Nx"])
         plt.boxplot(
-            [ncells/v.dropna() for v in timing.values()],
+            [ncells / v.dropna() for v in timing.values()],
             tick_labels=timing.keys(),
             vert=False,
             whis=(5, 95),

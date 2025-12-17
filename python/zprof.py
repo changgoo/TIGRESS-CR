@@ -96,14 +96,14 @@ class Zprof:
         os.makedirs(zpoutdir, exist_ok=True)
         zpoutfile = osp.join(zpoutdir, f"{self.problem_id}.{num:05d}.zprof.nc")
         if not os.path.isfile(zpoutfile) or force_override:
-            self.logger.info(f'creating: {zpoutfile}')
+            self.logger.info(f"creating: {zpoutfile}")
             ds = self.get_data(num)
             ds.load()
             zprof = self.construct_zprof(ds)
             zprof = zprof.assign_coords(time=ds.attrs["Time"])
             zprof.to_netcdf(zpoutfile)
         else:
-            self.logger.info(f'reading: {zpoutfile}')
+            self.logger.info(f"reading: {zpoutfile}")
             with xr.open_dataset(zpoutfile) as zprof:
                 zprof.load()
         return zprof
@@ -111,14 +111,15 @@ class Zprof:
     def load_zprof_postproc(self, zpoutdir=None, force_override=False):
         if zpoutdir is None:
             zpoutdir = osp.join(self.savdir, "zprof_postproc")
-            self.logger.info(f'save folder is set to {zpoutdir}')
+            self.logger.info(f"save folder is set to {zpoutdir}")
         os.makedirs(zpoutdir, exist_ok=True)
         zplist = []
         if force_override:
-            self.logger.info('forced recreation of postproc zprof')
+            self.logger.info("forced recreation of postproc zprof")
         for num in self.nums:
-            zprof = self.load_zprof_postproc_one(num, zpoutdir=zpoutdir,
-                                                 force_override=force_override)
+            zprof = self.load_zprof_postproc_one(
+                num, zpoutdir=zpoutdir, force_override=force_override
+            )
             zplist.append(zprof)
         zp_pp = xr.concat(zplist, dim="time")
 

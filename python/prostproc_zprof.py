@@ -4,33 +4,36 @@ import astropy.constants as ac
 import astropy.units as au
 from pyathena.util.derivative import gradient
 
+
 # utilities for CR rotation
-def get_b_angle(Bcc1,Bcc2,Bcc3,tiny=1.e-7):
-    B_R = np.sqrt(Bcc1**2+Bcc2**2)
-    B_r = np.sqrt(B_R**2+Bcc3**2)
-    sint_b=xr.where(B_r<tiny,xr.ones_like(B_r),B_R/B_r)
-    cost_b=xr.where(B_r<tiny,xr.zeros_like(B_r),Bcc3/B_r)
-    sinp_b=xr.where(B_R<tiny,xr.zeros_like(B_R),Bcc2/B_R)
-    cosp_b=xr.where(B_R<tiny,xr.ones_like(B_R),Bcc1/B_R)
+def get_b_angle(Bcc1, Bcc2, Bcc3, tiny=1.0e-7):
+    B_R = np.sqrt(Bcc1**2 + Bcc2**2)
+    B_r = np.sqrt(B_R**2 + Bcc3**2)
+    sint_b = xr.where(B_r < tiny, xr.ones_like(B_r), B_R / B_r)
+    cost_b = xr.where(B_r < tiny, xr.zeros_like(B_r), Bcc3 / B_r)
+    sinp_b = xr.where(B_R < tiny, xr.zeros_like(B_R), Bcc2 / B_R)
+    cosp_b = xr.where(B_R < tiny, xr.ones_like(B_R), Bcc1 / B_R)
 
-    return sint_b,cost_b,sinp_b,cosp_b
+    return sint_b, cost_b, sinp_b, cosp_b
 
-def rotate_vector(angles,vector):
-    sint,cost,sinp,cosp=angles
-    v1,v2,v3=vector
+
+def rotate_vector(angles, vector):
+    sint, cost, sinp, cosp = angles
+    v1, v2, v3 = vector
     # First apply R1, then apply R2
-    newv1 =  cosp * v1 + sinp * v2
+    newv1 = cosp * v1 + sinp * v2
     v2 = -sinp * v1 + cosp * v2
 
     # now apply R2
-    v1 =  sint * newv1 + cost * v3
+    v1 = sint * newv1 + cost * v3
     v3 = -cost * newv1 + sint * v3
 
-    return v1,v2,v3
+    return v1, v2, v3
 
-def inverse_rotate_vector(angles,vector):
-    sint,cost,sinp,cosp=angles
-    v1,v2,v3=vector
+
+def inverse_rotate_vector(angles, vector):
+    sint, cost, sinp, cosp = angles
+    v1, v2, v3 = vector
     # First apply R2^-1, then apply R1^-1
     newv1 = sint * v1 - cost * v3
     v3 = cost * v1 + sint * v3
@@ -39,78 +42,77 @@ def inverse_rotate_vector(angles,vector):
     v1 = cosp * newv1 - sinp * v2
     v2 = sinp * newv1 + cosp * v2
 
-    return v1,v2,v3
+    return v1, v2, v3
+
 
 class PostProcessingZprof:
     def Fcr_parallel(self, data):
-        """CR flux along B field direction
-        """
+        """CR flux along B field direction"""
         # B vector for angle
-        Bcc = [data[f] for f in ["Bcc1","Bcc2","Bcc3"]]
+        Bcc = [data[f] for f in ["Bcc1", "Bcc2", "Bcc3"]]
 
         # vector to rotate
-        Fc = [data[f] for f in ["0-Fc1","0-Fc2","0-Fc3"]]
+        Fc = [data[f] for f in ["0-Fc1", "0-Fc2", "0-Fc3"]]
 
         # rotation
         angles = get_b_angle(*Bcc)
-        Fc_rot = rotate_vector(angles,Fc)
+        Fc_rot = rotate_vector(angles, Fc)
 
         # final results
         return Fc_rot[0]
 
     def GradPcr_parallel_direct(self, data):
-        """CR pressure gradient along B field direction (non-steady state))
-        """
+        """CR pressure gradient along B field direction (non-steady state))"""
         # B vector for angle
-        Bcc = [data[f] for f in ["Bcc1","Bcc2","Bcc3"]]
+        Bcc = [data[f] for f in ["Bcc1", "Bcc2", "Bcc3"]]
 
         # vector to rotate
         # Finite difference gradient
-        gradPcr = gradient(data['0-Ec'].data/3.0,
-                           data.x.data,data.y.data,data.z.data)
+        gradPcr = gradient(
+            data["0-Ec"].data / 3.0, data.x.data, data.y.data, data.z.data
+        )
 
         # rotation
         angles = get_b_angle(*Bcc)
-        gradPcr_rot = rotate_vector(angles,gradPcr)
+        gradPcr_rot = rotate_vector(angles, gradPcr)
 
         # final results
         return gradPcr_rot[0]
 
     def Fcr_diff_parallel(self, data):
-        """CR diffusion flux along B field direction
-        """
+        """CR diffusion flux along B field direction"""
         # B vector for angle
-        Bcc = [data[f] for f in ["Bcc1","Bcc2","Bcc3"]]
+        Bcc = [data[f] for f in ["Bcc1", "Bcc2", "Bcc3"]]
 
         # vector to rotate
-        vdiff = [data[f] for f in ["0-Vd1","0-Vd2","0-Vd3"]]
+        vdiff = [data[f] for f in ["0-Vd1", "0-Vd2", "0-Vd3"]]
 
         # other variables
         ec = data["0-Ec"]
 
         # rotation
         angles = get_b_angle(*Bcc)
-        vdiff_rot = rotate_vector(angles,vdiff)
+        vdiff_rot = rotate_vector(angles, vdiff)
 
         # final results
-        fd_b = 4./3.*ec*np.abs(vdiff_rot[0])
+        fd_b = 4.0 / 3.0 * ec * np.abs(vdiff_rot[0])
         return fd_b
 
     def Gamma_cr_stream(self, data):
         """CR streaming heating along B field direction
-           (v_s,perp is zero if B is turned on)
+        (v_s,perp is zero if B is turned on)
         """
         # vmax in code units
-        vlim = self.par["cr"]["vmax"]/self.u.velocity.cgs.value
-        invlim = 1/vlim
+        vlim = self.par["cr"]["vmax"] / self.u.velocity.cgs.value
+        invlim = 1 / vlim
 
         # B vector for angle
-        Bcc = [data[f] for f in ["Bcc1","Bcc2","Bcc3"]]
+        Bcc = [data[f] for f in ["Bcc1", "Bcc2", "Bcc3"]]
 
         # vector to rotate
-        fc = [data[f]*vlim for f in ["0-Fc1","0-Fc2","0-Fc3"]]
-        vel = [data[f] for f in ["vel1","vel2","vel3"]]
-        vs = [data[f] for f in ["0-Vs1","0-Vs2","0-Vs3"]]
+        fc = [data[f] * vlim for f in ["0-Fc1", "0-Fc2", "0-Fc3"]]
+        vel = [data[f] for f in ["vel1", "vel2", "vel3"]]
+        vs = [data[f] for f in ["0-Vs1", "0-Vs2", "0-Vs3"]]
 
         # other variables
         ec = data["0-Ec"]
@@ -119,57 +121,66 @@ class PostProcessingZprof:
 
         # rotation
         angles = get_b_angle(*Bcc)
-        fc_rot = rotate_vector(angles,fc)
-        vel_rot = rotate_vector(angles,vel)
-        vs_rot = rotate_vector(angles,vs)
+        fc_rot = rotate_vector(angles, fc)
+        vel_rot = rotate_vector(angles, vel)
+        vs_rot = rotate_vector(angles, vs)
 
         # final results
-        sigma_para = invlim/(1.0/sigma_diff + 1.0/sigma_adv)
-        heating = -vs_rot[0]*sigma_para*(fc_rot[0]-4.0/3.0*ec*vel_rot[0])
+        sigma_para = invlim / (1.0 / sigma_diff + 1.0 / sigma_adv)
+        heating = -vs_rot[0] * sigma_para * (fc_rot[0] - 4.0 / 3.0 * ec * vel_rot[0])
 
         return heating
 
-    def GradPcr_parallel(self,data):
-        """CR pressure gradient along B field direction (assuming steady state flux)
-        """
+    def GradPcr_parallel(self, data):
+        """CR pressure gradient along B field direction (assuming steady state flux)"""
         # vmax in code units
-        vlim = self.par["cr"]["vmax"]/self.u.velocity.cgs.value
+        vlim = self.par["cr"]["vmax"] / self.u.velocity.cgs.value
 
         fd_b = self.Fcr_diff_parallel(data)
         sigma_diff = data["0-Sigma_diff1"]
-        kappac = vlim/sigma_diff
+        kappac = vlim / sigma_diff
 
         # final results
-        return fd_b/kappac
+        return fd_b / kappac
 
     def CRLosses(self, data, ng=0):
         # this is done for single-bin approximation
         eV_erg = 1.6021773e-12
 
         # everything in code units
-        ekin_bin = 1e9 # GeV
-        ekin_bin *= eV_erg / self.u.erg # code units
-        speed_of_light = ac.c.cgs/self.u.velocity.cgs
-        hydrogen_mass = self.u.mH/self.u.mass.cgs
-        p_bin = np.sqrt((ekin_bin/speed_of_light)**2 + 2*ekin_bin*hydrogen_mass)
+        ekin_bin = 1e9  # GeV
+        ekin_bin *= eV_erg / self.u.erg  # code units
+        speed_of_light = ac.c.cgs / self.u.velocity.cgs
+        hydrogen_mass = self.u.mH / self.u.mass.cgs
+        p_bin = np.sqrt((ekin_bin / speed_of_light) ** 2 + 2 * ekin_bin * hydrogen_mass)
         p = [p_bin]
-        erel = [np.sqrt((p[0]*speed_of_light)**2 + hydrogen_mass**2*speed_of_light**4)]
-        ekin = [erel[0] - hydrogen_mass*speed_of_light**2]
-        vp = [speed_of_light * np.sqrt(1-(hydrogen_mass * speed_of_light**2/erel[0])**2)]
+        erel = [
+            np.sqrt((p[0] * speed_of_light) ** 2 + hydrogen_mass**2 * speed_of_light**4)
+        ]
+        ekin = [erel[0] - hydrogen_mass * speed_of_light**2]
+        vp = [
+            speed_of_light
+            * np.sqrt(1 - (hydrogen_mass * speed_of_light**2 / erel[0]) ** 2)
+        ]
 
         # convert to cgs
-        erel_erg = erel[ng]*self.u.erg
-        erel_ev = erel_erg/eV_erg
-        ekin_ev = ekin[ng]*self.u.erg / eV_erg
-        vp_cgs = vp[ng]*self.u.cm/self.u.s
+        erel_erg = erel[ng] * self.u.erg
+        erel_ev = erel_erg / eV_erg
+        ekin_ev = ekin[ng] * self.u.erg / eV_erg
+        vp_cgs = vp[ng] * self.u.cm / self.u.s
 
         # ionization losses
-        lambdac = 1.21 * 1.27e-15*(ekin_ev/1e6)**(-0.82)*vp_cgs/erel_ev
+        lambdac = 1.21 * 1.27e-15 * (ekin_ev / 1e6) ** (-0.82) * vp_cgs / erel_ev
         # hadronic losses
-        if (ekin_ev > 1e10):
-            lambdac += 1.18 * 3.85e-16 * (erel_ev/1e9)**(0.28)*(erel_ev/1e9 + 200)**(-0.2)
-        elif (ekin_ev > 0.28e9):
-            lambdac +=  1.18 * 2.82e-15 * (ekin_ev/1e10)**(1.28)/(erel_ev/1e9)
+        if ekin_ev > 1e10:
+            lambdac += (
+                1.18
+                * 3.85e-16
+                * (erel_ev / 1e9) ** (0.28)
+                * (erel_ev / 1e9 + 200) ** (-0.2)
+            )
+        elif ekin_ev > 0.28e9:
+            lambdac += 1.18 * 2.82e-15 * (ekin_ev / 1e10) ** (1.28) / (erel_ev / 1e9)
 
         # convert to code units
         lambdac *= self.u.s
@@ -177,23 +188,23 @@ class PostProcessingZprof:
         # final results
         ec = data["0-Ec"]
         rho = data["rho"]
-        density_to_nH = (self.u.density.cgs/(self.u.mH*self.u.muH/au.cm**3))
+        density_to_nH = self.u.density.cgs / (self.u.mH * self.u.muH / au.cm**3)
         nH = rho * density_to_nH
         return -nH * ec * lambdac
 
     def CRwork(self, data, ng=0, split=False):
         # vmax in code units
-        vlim = self.par["cr"]["vmax"]/self.u.velocity.cgs.value
-        invlim = 1/vlim
+        vlim = self.par["cr"]["vmax"] / self.u.velocity.cgs.value
+        invlim = 1 / vlim
 
         # B vector for angle
-        Bcc = [data[f] for f in ["Bcc1","Bcc2","Bcc3"]]
+        Bcc = [data[f] for f in ["Bcc1", "Bcc2", "Bcc3"]]
 
         # vector to rotate
-        fc = [data[f]*vlim for f in ["0-Fc1","0-Fc2","0-Fc3"]]
-        vel = [data[f] for f in ["vel1","vel2","vel3"]]
-        vs = [data[f] for f in ["0-Vs1","0-Vs2","0-Vs3"]]
-        vd = [data[f] for f in ["0-Vd1","0-Vd2","0-Vd3"]]
+        fc = [data[f] * vlim for f in ["0-Fc1", "0-Fc2", "0-Fc3"]]
+        vel = [data[f] for f in ["vel1", "vel2", "vel3"]]
+        vs = [data[f] for f in ["0-Vs1", "0-Vs2", "0-Vs3"]]
+        vd = [data[f] for f in ["0-Vd1", "0-Vd2", "0-Vd3"]]
 
         # other variables
         ec = data["0-Ec"]
@@ -202,17 +213,23 @@ class PostProcessingZprof:
 
         # rotation
         angles = get_b_angle(*Bcc)
-        fc_rot = rotate_vector(angles,fc)
-        vel_rot = rotate_vector(angles,vel)
+        fc_rot = rotate_vector(angles, fc)
+        vel_rot = rotate_vector(angles, vel)
         # vs_rot = rotate_vector(angles,vs)
-        vd_rot = rotate_vector(angles,vd)
+        vd_rot = rotate_vector(angles, vd)
 
         # final results
-        sigma_para = invlim/(1.0/sigma_diff + 1.0/sigma_adv)
-        sigma_perp = sigma_diff*self.par["cr"]["perp_to_par_diff"]
-        kappa_perp = vlim/sigma_perp
-        work_para = -vel_rot[0]*sigma_para*(fc_rot[0]-4.0/3.0*ec*vel_rot[0])
-        work_perp = -4.0/3.0*ec/kappa_perp*(vd_rot[1]*vel_rot[1] + vd_rot[2]*vel_rot[2])
+        sigma_para = invlim / (1.0 / sigma_diff + 1.0 / sigma_adv)
+        sigma_perp = sigma_diff * self.par["cr"]["perp_to_par_diff"]
+        kappa_perp = vlim / sigma_perp
+        work_para = -vel_rot[0] * sigma_para * (fc_rot[0] - 4.0 / 3.0 * ec * vel_rot[0])
+        work_perp = (
+            -4.0
+            / 3.0
+            * ec
+            / kappa_perp
+            * (vd_rot[1] * vel_rot[1] + vd_rot[2] * vel_rot[2])
+        )
 
         if split:
             return work_para, work_perp
@@ -220,13 +237,12 @@ class PostProcessingZprof:
             return work_para + work_perp
 
     def EffecitveCRvelocity(self, data, dir=1):
-        """Effective CR velocity along B field direction
-        """
+        """Effective CR velocity along B field direction"""
         # vmax in code units
-        vlim = self.par["cr"]["vmax"]/self.u.velocity.cgs.value
+        vlim = self.par["cr"]["vmax"] / self.u.velocity.cgs.value
 
         ec = data["0-Ec"]
-        return data[f"0-Fc{dir}"]*vlim/(4.0/3.0*ec)
+        return data[f"0-Fc{dir}"] * vlim / (4.0 / 3.0 * ec)
 
     def GetAreaForPhaseAndVz(self, data, phase, nph=0, vz_dir=1):
         """Area of the face where vz_dir*Vz>0 and phase=nph
@@ -236,8 +252,8 @@ class PostProcessingZprof:
         # This function requires pmb pointer, so it should be implemented in C++
         # Here is the reference implementation in C++:
         #
-        area = self.domain["dx"][0]*self.domain["dx"][1]
-        return area*((vz_dir*data["vel3"] > 0) & (phase == nph))
+        area = self.domain["dx"][0] * self.domain["dx"][1]
+        return area * ((vz_dir * data["vel3"] > 0) & (phase == nph))
 
     def get_all_crprop(self, data, ng=0):
         results = xr.Dataset()
@@ -256,7 +272,7 @@ class PostProcessingZprof:
 
     def construct_zprof(self, data):
         phase = self.set_phase(data)
-        phname = ["CNM","UNM","WNM","WHIM","HIM"]
+        phname = ["CNM", "UNM", "WNM", "WHIM", "HIM"]
         zplist = []
         zprof_data = xr.Dataset()
         # density field for sanity check
@@ -269,11 +285,15 @@ class PostProcessingZprof:
             self.add_coolheat(data)
         zprof_data["cool_rate"] = data["cool_rate"]
         zprof_data["heat_rate"] = data["heat_rate"]
-        for vz_dir in [-1,1]:
+        for vz_dir in [-1, 1]:
             zplist_ = []
             for nph in range(5):
                 area = self.GetAreaForPhaseAndVz(data, phase, nph=nph, vz_dir=vz_dir)
-                zprof = (zprof_data*area).sum(dim=["x","y"]).assign_coords(phase=phname[nph])
+                zprof = (
+                    (zprof_data * area)
+                    .sum(dim=["x", "y"])
+                    .assign_coords(phase=phname[nph])
+                )
                 zplist_.append(zprof)
             zplist.append(xr.concat(zplist_, dim="phase").assign_coords(vz_dir=vz_dir))
 

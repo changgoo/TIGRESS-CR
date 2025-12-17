@@ -21,7 +21,10 @@ from pyathena.fields.fields import DerivedFields
 
 base_path = osp.dirname(__file__)
 
-class LoadSimTIGRESSPP(LoadSim,Hst,Timing,Zprof,SliceProj,PDF,PostProcessingZprof):
+
+class LoadSimTIGRESSPP(
+    LoadSim, Hst, Timing, Zprof, SliceProj, PDF, PostProcessingZprof
+):
     """LoadSim class for analyzing TIGRESS++ simulations running on Athena++"""
 
     def __init__(self, basedir, savdir=None, load_method="xarray", verbose=False):
@@ -70,17 +73,17 @@ class LoadSimTIGRESSPP(LoadSim,Hst,Timing,Zprof,SliceProj,PDF,PostProcessingZpro
                 # Suppress divide-by-zero warning
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", category=RuntimeWarning)
-                    logL=np.log10(cooltbl["Lambda"])
-                    logG=np.log10(cooltbl["Gamma"])
+                    logL = np.log10(cooltbl["Lambda"])
+                    logG = np.log10(cooltbl["Gamma"])
                     logLam = interp1d(
                         cooltbl["logT1"],
                         logL,
-                        fill_value=(logL[0],"extrapolate"),
+                        fill_value=(logL[0], "extrapolate"),
                     )
                     logGam = interp1d(
                         cooltbl["logT1"],
                         logG,
-                        fill_value=("extrapolate",logG[0]),
+                        fill_value=("extrapolate", logG[0]),
                     )
                 mu = interp1d(cooltbl["logT1"], cooltbl["mu"], fill_value="extrapolate")
                 self.coolftn = dict(logLambda=logLam, logGamma=logGam, mu=mu)
@@ -156,7 +159,7 @@ class LoadSimTIGRESSPP(LoadSim,Hst,Timing,Zprof,SliceProj,PDF,PostProcessingZpro
     def add_temperature(self, ds):
         T1 = ds["press"] / ds["rho"] * (self.u.temperature_mu).value
         if self.options["newcool"]:
-            mu = 1.4/(1.1 + ds['rEL'] - ds['rH2'])
+            mu = 1.4 / (1.1 + ds["rEL"] - ds["rH2"])
         else:
             if hasattr(self, "coolftn"):
                 logT1 = np.log10(T1)
@@ -167,14 +170,14 @@ class LoadSimTIGRESSPP(LoadSim,Hst,Timing,Zprof,SliceProj,PDF,PostProcessingZpro
 
     def add_coolheat(self, ds):
         T1 = ds["press"] / ds["rho"] * (self.u.temperature_mu).value
-        density_to_nH = (self.u.density.cgs/(self.u.mH*self.u.muH/au.cm**3))
+        density_to_nH = self.u.density.cgs / (self.u.mH * self.u.muH / au.cm**3)
         nH = ds["rho"] * density_to_nH
         if hasattr(self, "coolftn"):
             logT1 = np.log10(T1)
-            cool = 10**self.coolftn["logLambda"](logT1)
-            heat = 10**self.coolftn["logGamma"](logT1)
-        ds["cool_rate"] = cool*nH**2
-        ds["heat_rate"] = heat*nH
+            cool = 10 ** self.coolftn["logLambda"](logT1)
+            heat = 10 ** self.coolftn["logGamma"](logT1)
+        ds["cool_rate"] = cool * nH**2
+        ds["heat_rate"] = heat * nH
 
     def get_data(self, num, outid=None, load_derived=False):
         """a wrapper function to load data with automatically assigned
@@ -235,10 +238,18 @@ class LoadSimTIGRESSPP(LoadSim,Hst,Timing,Zprof,SliceProj,PDF,PostProcessingZpro
             dfi.dfi["ne"]["imshow_args"]["norm"] = LogNorm(vmin=1e-4, vmax=1e2)
             dfi.dfi["xe"]["imshow_args"]["norm"] = Normalize(0, 1.2)
             dfi.dfi["xe"]["imshow_args"]["cmap"] = cm.ocean_r
-            dfi.dfi["cool_rate_cgs"]["imshow_args"]["cmap"] = cmr.get_sub_cmap(cmr.freeze_r, 0.0, 0.7)
-            dfi.dfi["cool_rate_cgs"]["imshow_args"]["norm"] = LogNorm(vmin=1e-30, vmax=1e-20)
-            dfi.dfi["heat_rate_cgs"]["imshow_args"]["cmap"] = cmr.get_sub_cmap(cmr.flamingo_r, 0.0, 0.7)
-            dfi.dfi["heat_rate_cgs"]["imshow_args"]["norm"] = LogNorm(vmin=1e-30, vmax=1e-20)
+            dfi.dfi["cool_rate_cgs"]["imshow_args"]["cmap"] = cmr.get_sub_cmap(
+                cmr.freeze_r, 0.0, 0.7
+            )
+            dfi.dfi["cool_rate_cgs"]["imshow_args"]["norm"] = LogNorm(
+                vmin=1e-30, vmax=1e-20
+            )
+            dfi.dfi["heat_rate_cgs"]["imshow_args"]["cmap"] = cmr.get_sub_cmap(
+                cmr.flamingo_r, 0.0, 0.7
+            )
+            dfi.dfi["heat_rate_cgs"]["imshow_args"]["norm"] = LogNorm(
+                vmin=1e-30, vmax=1e-20
+            )
 
         if self.options["cosmic_ray"]:
             dfi.dfi["vmag"]["imshow_args"]["cmap"] = dfi.dfi["Vcr_mag"]["imshow_args"][
@@ -247,8 +258,8 @@ class LoadSimTIGRESSPP(LoadSim,Hst,Timing,Zprof,SliceProj,PDF,PostProcessingZpro
             dfi.dfi["vmag"]["imshow_args"]["norm"] = dfi.dfi["Vcr_mag"]["imshow_args"][
                 "norm"
             ]
-            dfi.dfi["pok_cr"]["imshow_args"]["norm"] = LogNorm(1.e2,5.e4)
-            for pok_field in ["pok","pok_mag","pok_trbz","pok_cr"]:
+            dfi.dfi["pok_cr"]["imshow_args"]["norm"] = LogNorm(1.0e2, 5.0e4)
+            for pok_field in ["pok", "pok_mag", "pok_trbz", "pok_cr"]:
                 # cmap = dfi.dfi["pok_cr"]["imshow_args"]["cmap"]
                 cmap = cm.plasma
                 dfi.dfi[pok_field]["imshow_args"]["cmap"] = cmap
@@ -259,11 +270,11 @@ class LoadSimTIGRESSPP(LoadSim,Hst,Timing,Zprof,SliceProj,PDF,PostProcessingZpro
             if len(sp) == 2:
                 name = sp[0]
                 unit = sp[1]
-                dfi.dfi[k]["label_name"]= name+"$"
-                dfi.dfi[k]["label_unit"]= "$" + unit
+                dfi.dfi[k]["label_name"] = name + "$"
+                dfi.dfi[k]["label_unit"] = "$" + unit
             else:
-                dfi.dfi[k]["label_name"]= dfi.dfi[k]["label"]
-                dfi.dfi[k]["label_unit"]= ""
+                dfi.dfi[k]["label_name"] = dfi.dfi[k]["label"]
+                dfi.dfi[k]["label_unit"] = ""
         self.dfi = dfi.dfi
 
     def get_pdf(
@@ -434,11 +445,12 @@ class LoadSimTIGRESSPP(LoadSim,Hst,Timing,Zprof,SliceProj,PDF,PostProcessingZpro
 
     def set_phase(self, data):
         temp_cuts = self.get_phase_Tlist("classic")
-        phase = xr.zeros_like(data["temperature"],dtype="int") + len(temp_cuts)
-        self.phlist = ["CNM","UNM","WNM","WHIM","HIM"]
-        for i,tcut in enumerate(temp_cuts):
-            phase = xr.where(data["temperature"] < tcut, phase-1, phase)
+        phase = xr.zeros_like(data["temperature"], dtype="int") + len(temp_cuts)
+        self.phlist = ["CNM", "UNM", "WNM", "WHIM", "HIM"]
+        for i, tcut in enumerate(temp_cuts):
+            phase = xr.where(data["temperature"] < tcut, phase - 1, phase)
         return phase
+
 
 class LoadSimTIGRESSPPAll(object):
     """Class to load multiple simulations"""
@@ -479,16 +491,18 @@ class LoadSimTIGRESSPPAll(object):
 
     def __repr__(self):
         """Return a hierarchical string representation of __dict__."""
+
         def format_dict(d, indent=0):
             lines = []
             for k, v in d.items():
-                pad = '  ' * indent
+                pad = "  " * indent
                 if isinstance(v, dict):
                     lines.append(f"{pad}{k}:")
                     lines.extend(format_dict(v, indent + 1))
                 else:
                     lines.append(f"{pad}{k}: {repr(v)}")
             return lines
+
         lines = format_dict(self.__dict__)
         return f"<{self.__class__.__name__}>\n" + "\n".join(lines)
 
@@ -497,4 +511,3 @@ class LoadSimTIGRESSPPAll(object):
         if key in self.simdict:
             return self.simdict[key]
         raise AttributeError(f"{self.__class__.__name__} has no attribute '{key}'")
-
