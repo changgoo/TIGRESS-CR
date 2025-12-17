@@ -115,7 +115,7 @@ class Zprof:
         os.makedirs(zpoutdir, exist_ok=True)
         zplist = []
         if force_override:
-            self.logger.info(f'forced recreation of postproc zprof')
+            self.logger.info('forced recreation of postproc zprof')
         for num in self.nums:
             zprof = self.load_zprof_postproc_one(num, zpoutdir=zpoutdir,
                                                  force_override=force_override)
