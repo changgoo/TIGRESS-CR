@@ -1,1 +1,3 @@
-The notebooks here rely on [`pyathena/tigresspp`](https://github.com/jeonggyukim/pyathena/tree/tigresspp).
+This repo depends on [`pyathena`](https://github.com/jeonggyukim/pyathena).
+
+The notebooks assume that this repo is located within `pyathena/`
