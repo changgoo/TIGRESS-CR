@@ -228,16 +228,16 @@ class PostProcessingZprof:
         ec = data["0-Ec"]
         return data[f"0-Fc{dir}"]*vlim/(4.0/3.0*ec)
 
-    def GetAreaForPhaseAndVz(self, data, phase, np=0, vz_dir=1):
-        """Area of the face where vz_dir*Vz>0 and phase=np
-        np=0: cold, 1: cool, 2: warm, 3: ionized, 4: hot
+    def GetAreaForPhaseAndVz(self, data, phase, nph=0, vz_dir=1):
+        """Area of the face where vz_dir*Vz>0 and phase=nph
+        nph=0: cold, 1: cool, 2: warm, 3: ionized, 4: hot
         vz_dir=1: top face, vz_dir=-1: bottom face
         """
         # This function requires pmb pointer, so it should be implemented in C++
         # Here is the reference implementation in C++:
         #
         area = self.domain["dx"][0]*self.domain["dx"][1]
-        return area*((vz_dir*data["vel3"] > 0) & (phase == np))
+        return area*((vz_dir*data["vel3"] > 0) & (phase == nph))
 
     def get_all_crprop(self, data, ng=0):
         results = xr.Dataset()
@@ -271,9 +271,9 @@ class PostProcessingZprof:
         zprof_data["heat_rate"] = data["heat_rate"]
         for vz_dir in [-1,1]:
             zplist_ = []
-            for np in range(5):
-                area = self.GetAreaForPhaseAndVz(data, phase, np=np, vz_dir=vz_dir)
-                zprof = (zprof_data*area).sum(dim=["x","y"]).assign_coords(phase=phname[np])
+            for nph in range(5):
+                area = self.GetAreaForPhaseAndVz(data, phase, nph=nph, vz_dir=vz_dir)
+                zprof = (zprof_data*area).sum(dim=["x","y"]).assign_coords(phase=phname[nph])
                 zplist_.append(zprof)
             zplist.append(xr.concat(zplist_, dim="phase").assign_coords(vz_dir=vz_dir))
 
