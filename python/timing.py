@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-from ..load_sim import LoadSim
+from pyathena.load_sim import LoadSim
 
 
 class Timing:

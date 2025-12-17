@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 # import astropy.units as au
 # import astropy.constants as ac
 
-from ..io.read_hst import read_hst
-from ..load_sim import LoadSim
+from pyathena.io.read_hst import read_hst
+from pyathena.load_sim import LoadSim
 
 
 class Hst:

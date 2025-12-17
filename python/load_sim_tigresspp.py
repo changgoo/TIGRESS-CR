@@ -10,15 +10,14 @@ import cmasher as cmr
 
 import astropy.units as au
 
-from .hst import Hst
-from .timing import Timing
-from .zprof import Zprof
-from .slc_prj import SliceProj
-from .pdf import PDF
-from .prostproc_zprof import PostProcessingZprof
-from ..load_sim import LoadSim
+from hst import Hst
+from timing import Timing
+from zprof import Zprof
+from slc_prj import SliceProj
+from pdf import PDF
+from prostproc_zprof import PostProcessingZprof
+from pyathena.load_sim import LoadSim
 from pyathena.fields.fields import DerivedFields
-import pyathena as pa
 
 base_path = osp.dirname(__file__)
 

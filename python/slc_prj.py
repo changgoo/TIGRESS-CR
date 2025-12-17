@@ -13,7 +13,7 @@ from matplotlib import cm
 from matplotlib.colors import Normalize, LogNorm, SymLogNorm
 import xarray as xr
 
-from ..load_sim import LoadSim
+from pyathena.load_sim import LoadSim
 
 
 cpp_to_cc = {

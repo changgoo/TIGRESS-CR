@@ -13,7 +13,7 @@ from matplotlib import cm
 from matplotlib.colors import Normalize, LogNorm, SymLogNorm
 import xarray as xr
 
-from ..load_sim import LoadSim
+from pyathena.load_sim import LoadSim
 
 
 cpp_to_cc = {
@@ -50,7 +50,8 @@ class PDF:
         ds = self.load_hdf5(num=num, outid=outid, file_only=True)
 
         if dryrun:
-            return max(osp.getmtime(self.fhdf5),osp.getmtime(__file__))
+            return osp.getmtime(self.fhdf5)
+            # return max(osp.getmtime(self.fhdf5),osp.getmtime(__file__))
 
         data = self.get_data(num,outid=outid,load_derived=True)
 

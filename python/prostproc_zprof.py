@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import astropy.constants as ac
 import astropy.units as au
-from ..util.derivative import gradient
+from pyathena.util.derivative import gradient
 
 # utilities for CR rotation
 def get_b_angle(Bcc1,Bcc2,Bcc3,tiny=1.e-7):

@@ -17,9 +17,10 @@ import cmasher as cmr
 from scipy.optimize import curve_fit
 
 # import pyathena as pa
-from .load_sim_tigresspp import LoadSimTIGRESSPPAll
+from load_sim_tigresspp import LoadSimTIGRESSPPAll
 
 plt.style.use(osp.join(filepath, "paper.mplstyle"))
+
 model_name = {
     "crmhd-16pc-b1-diode-lngrad_out": "crmhd_v1",
     "crmhd_v2-16pc-b1-diode-lngrad_out": "crmhd_v2",
@@ -116,7 +117,12 @@ model_tall = [
     "crmhd-16pc-fullgrav-b1-diode-lngrad_out",
 ]
 
-outdir = "./figures"
+outdir = "../figures"
+
+def set_outdir(dirname):
+    global outdir
+    outdir = dirname
+    os.makedirs(outdir,exist_ok=True)
 
 # Add this function to fit exponential profiles
 def fit_exponential_profile(z, P, return_all=False, zmin=0.1, zmax=1):

@@ -4,7 +4,7 @@ import os.path as osp
 import xarray as xr
 import pandas as pd
 
-from ..load_sim import LoadSim
+from pyathena.load_sim import LoadSim
 
 
 class Zprof:
