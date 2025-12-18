@@ -194,3 +194,17 @@ class PDF:
         pdf["in"] = pdf["in"].to_array("z")
 
         return xr.Dataset(pdf).assign_coords(time=ds.attrs["Time"])
+
+    def create_windpdf(self, pdf_outdir=None):
+        self.logger.info("Merged wind pdfs are not found. Creating new wind pdfs...")
+
+        outpdf = []
+        inpdf = []
+        for num in self.nums:
+            pdf = self.get_windpdf(num, "windpdf")
+            outpdf.append(pdf["out"])
+            inpdf.append(pdf["in"])
+        if pdf_outdir is None:
+            pdf_outdir = os.path.join(self.savdir, "windpdf")
+        xr.concat(outpdf, dim="time").to_netcdf(os.path.join(pdf_outdir, "outpdf.nc"))
+        xr.concat(inpdf, dim="time").to_netcdf(os.path.join(pdf_outdir, "inpdf.nc"))

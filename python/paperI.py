@@ -45,6 +45,9 @@ snapshot_nums = dict(mhd=[88, 75], crmhd=[78, 65])
 simgroup = dict()
 group = "default"
 
+tslice = slice(150, 500)
+zslice = slice(-50, 50)
+
 
 def load(verbose=True):
     # find models
@@ -61,7 +64,7 @@ def load(verbose=True):
     load_group(simgroup, group)
     for m, s in sims.items():
         zp = s.load_zprof_postproc()
-        load_windpdf(s)
+        load_windpdf(s, tslice=tslice, both=True)
 
     # setup for plotting scripts
     ps.setup(outdir, model_name, model_color)
@@ -72,7 +75,7 @@ def draw_figures(num="all"):
 
     if num == "all" or num == 1:
         # time evolution
-        fig = ps.plot_history(simgroup, group, savefig=False)
+        fig = ps.plot_history(simgroup, group, tslice=tslice, savefig=False)
 
         for m, s in simgroup[group].items():
             name = model_name[m]
@@ -88,31 +91,37 @@ def draw_figures(num="all"):
 
     if num == "all" or num == 2:
         # SFR
-        ps.plot_pressure_t(simgroup, group)
-        ps.plot_pressure_z(simgroup, group)
-        ps.plot_vertical_equilibrium_t(simgroup, group)
+        ps.plot_pressure_t(simgroup, group, zslice=zslice)
+        ps.plot_pressure_z(simgroup, group, tslice=tslice)
+        ps.plot_vertical_equilibrium_t(simgroup, group, zmax=1000)
 
     if num == "all" or num == 5:
         # filling factors
-        ps.plot_area_mass_fraction_z(simgroup, group)
+        ps.plot_area_mass_fraction_z(simgroup, group, tslice=tslice)
 
     if num == "all" or num == 6:
         # velocities
-        ps.plot_velocity_z(simgroup, group, ph="wc")
-        ps.plot_velocity_z(simgroup, group, ph="hot")
+        ps.plot_velocity_z(simgroup, group, ph="wc", tslice=tslice)
+        ps.plot_velocity_z(simgroup, group, ph="hot", tslice=tslice)
 
     if num == "all" or num == 7:
         # kappa
-        ps.plot_kappa_z(simgroup, group)
+        ps.plot_kappa_z(simgroup, group, tslice=tslice)
         ps.plot_kappa_z(
-            simgroup, group, phases=[["CNM", "UNM"], "WNM", ["WHIM", "HIM"]]
+            simgroup,
+            group,
+            phases=[["CNM", "UNM"], "WNM", ["WHIM", "HIM"]],
+            tslice=tslice,
         )
 
     if num == "all" or num == 8:
         # gain/loss
-        ps.plot_gainloss_z(simgroup, group)
+        ps.plot_gainloss_z(simgroup, group, tslice=tslice)
         ps.plot_gainloss_z(
-            simgroup, group, phases=[["CNM", "UNM", "WNM"], "WHIM", "HIM"]
+            simgroup,
+            group,
+            phases=[["CNM", "UNM", "WNM"], "WHIM", "HIM"],
+            tslice=tslice,
         )
 
     if num == "all" or num == 9:
@@ -121,17 +130,21 @@ def draw_figures(num="all"):
 
     if num == "all" or num == 10:
         # flux
-        ps.plot_flux_z(simgroup, group, vz_dir=1, both=True)
+        ps.plot_flux_z(simgroup, group, vz_dir=1, both=True, tslice=tslice)
 
     if num == "all" or num == 11:
         # loading
-        ps.plot_loading_z(simgroup, group, vz_dir=None, both=True)
+        ps.plot_loading_z(simgroup, group, vz_dir=None, both=True, tslice=tslice)
 
     if num == "all" or num == 12:
         # momentum transfer
-        ps.plot_momentum_transfer_z(simgroup, group, showall=False)
-        ps.plot_momentum_transfer_z(simgroup, group, hot="trb", showall=True)
-        ps.plot_momentum_transfer_z(simgroup, group, hot="full", showall=True)
+        ps.plot_momentum_transfer_z(simgroup, group, showall=False, tslice=tslice)
+        ps.plot_momentum_transfer_z(
+            simgroup, group, hot="trb", showall=True, tslice=tslice
+        )
+        ps.plot_momentum_transfer_z(
+            simgroup, group, hot="full", showall=True, tslice=tslice
+        )
 
     if num == "all" or num == 13:
         # joint pdfs

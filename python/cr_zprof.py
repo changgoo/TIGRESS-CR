@@ -2,6 +2,7 @@ import os
 import os.path as osp
 import glob
 
+from python import pdf
 import xarray as xr
 
 import numpy as np
@@ -254,12 +255,13 @@ def cr_data_load(
     folders = sorted(glob.glob(osp.join(basedir, pattern)))
     icolor = 0
     model_dict = dict()
+    print(f"Available models in {basedir}:")
     for folder in folders:
         name = os.path.basename(folder)
         name = name.replace("mhdbc_", "").replace("crbc_", "").replace("-icpx", "")
         model_dict[name] = folder
         if name not in model_color:
-            print(name)
+            print(f"  - {name}")
             model_color[name] = f"C{icolor}"
             model_name[name] = name
             icolor += 1
@@ -331,32 +333,7 @@ def load_group(sim_group, group="default"):
             s.hst = s.read_hst()
 
 
-def create_windpdf(simgroup, gr):
-    """Create wind PDF (probability distribution function) by concatenating snapshots.
-
-    Combines wind probability functions from all snapshots into time-concatenated
-    NetCDF files (outpdf.nc, inpdf.nc) for outflow and inflow respectively.
-
-    Parameters
-    ----------
-    simgroup : dict
-        Nested dictionary of grouped simulations
-    gr : str
-        Group name to process
-    """
-    for m, s in simgroup[gr].items():
-        outpdf = []
-        inpdf = []
-        for num in s.nums:
-            pdf = s.get_windpdf(num, "windpdf")
-            outpdf.append(pdf["out"])
-            inpdf.append(pdf["in"])
-        pdf_outdir = os.path.join(s.savdir, "windpdf")
-        xr.concat(outpdf, dim="time").to_netcdf(os.path.join(pdf_outdir, "outpdf.nc"))
-        xr.concat(inpdf, dim="time").to_netcdf(os.path.join(pdf_outdir, "inpdf.nc"))
-
-
-def load_windpdf(s):
+def load_windpdf(s, tslice=slice(150, 500), both=True):
     """Load and process wind probability distribution functions.
 
     Loads outflow and inflow PDFs, normalizes by volume and area,
@@ -369,17 +346,19 @@ def load_windpdf(s):
         Simulation object; populates s.outflux and s.influx attributes
     """
     pdf_outdir = os.path.join(s.savdir, "windpdf")
-    with xr.open_dataarray(os.path.join(pdf_outdir, "outpdf.nc")) as da:
+    oufpdf_fname = os.path.join(pdf_outdir, "outpdf.nc")
+    inpdf_fname = os.path.join(pdf_outdir, "inpdf.nc")
+
+    if not os.path.isfile(oufpdf_fname) or not os.path.isfile(inpdf_fname):
+        s.create_windpdf(pdf_outdir=pdf_outdir)
+
+    with xr.open_dataarray(oufpdf_fname) as da:
         s.outpdf = (
-            da.sel(flux=["mflux", "eflux", "mflux_Z"])
-            .sel(time=slice(150, 500))
-            .mean(dim="time")
+            da.sel(flux=["mflux", "eflux", "mflux_Z"]).sel(time=tslice).mean(dim="time")
         )
-    with xr.open_dataarray(os.path.join(pdf_outdir, "inpdf.nc")) as da:
+    with xr.open_dataarray(inpdf_fname) as da:
         s.inpdf = (
-            da.sel(flux=["mflux", "eflux", "mflux_Z"])
-            .sel(time=slice(150, 500))
-            .mean(dim="time")
+            da.sel(flux=["mflux", "eflux", "mflux_Z"]).sel(time=tslice).mean(dim="time")
         )
     zfc = np.linspace(s.domain["le"][2], s.domain["re"][2], s.domain["Nx"][2] + 1)
     zcc = 0.5 * (zfc[1:] + zfc[:-1])
@@ -390,8 +369,8 @@ def load_windpdf(s):
     mstar = 1 / np.sum(s.pop_synth["snrate"] * dt)
     field = "sfr40"
     h = s.read_hst()
-    sfr_avg = h[field].loc[150:].mean()
-    sfr_std = h[field].loc[150:].std()
+    sfr_avg = h[field].loc[tslice].mean()
+    sfr_std = h[field].loc[tslice].std()
     ref_flux = dict(
         mflux=sfr_avg / mstar * mstar,
         eflux=sfr_avg / mstar * 1.0e51,
@@ -403,14 +382,22 @@ def load_windpdf(s):
     influx = s.inpdf / np.prod(s.domain["Nx"][:-1]) / dnz
 
     # mean both sides
-    zabs = [500, 1000, 2000, 3000]
-    outflux_zabs = []
-    influx_zabs = []
-    for z_ in zabs:
-        outflux_zabs.append(outflux.sel(z=[-z_, z_]).mean(dim="z").assign_coords(z=z_))
-        influx_zabs.append(influx.sel(z=[-z_, z_]).mean(dim="z").assign_coords(z=z_))
-    s.outflux = xr.concat(outflux_zabs, dim="z")
-    s.influx = xr.concat(outflux_zabs, dim="z")
+    if both:
+        zabs = [500, 1000, 2000, 3000]
+        outflux_zabs = []
+        influx_zabs = []
+        for z_ in zabs:
+            outflux_zabs.append(
+                outflux.sel(z=[-z_, z_]).mean(dim="z").assign_coords(z=z_)
+            )
+            influx_zabs.append(
+                influx.sel(z=[-z_, z_]).mean(dim="z").assign_coords(z=z_)
+            )
+        s.outflux = xr.concat(outflux_zabs, dim="z")
+        s.influx = xr.concat(influx_zabs, dim="z")
+    else:
+        s.outflux = outflux
+        s.influx = influx
 
 
 def print_sim_table(sims):
