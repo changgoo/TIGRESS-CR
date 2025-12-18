@@ -178,7 +178,7 @@ def plot_slices(sim, num, savefig=True):
     )
 
     if savefig:
-        savdir = osp.join(sim.savdir, "cr_snapshot2")
+        savdir = osp.join(sim.savdir, "cr_snapshot")
         if not osp.exists(savdir):
             os.makedirs(savdir, exist_ok=True)
 
@@ -827,6 +827,7 @@ def plot_slices_cr(
         "pok",
         "pok_mag",
     ],
+    savefig=False,
 ):
     # read slices
     slc_xy = sim.get_slice(num, "allslc.z", slc_kwargs=dict(z=0, method="nearest"))
@@ -928,6 +929,13 @@ def plot_slices_cr(
             fontsize="large",
             bbox=dict(boxstyle="round,pad=0.2", fc="w", ec="k", lw=1),
         )
+    if savefig:
+        savdir = osp.join(sim.savdir, "cr_slices")
+        if not osp.exists(savdir):
+            os.makedirs(savdir, exist_ok=True)
+
+        savname = osp.join(savdir, "{0:s}_{1:04d}.png".format(sim.basename, num))
+        plt.savefig(savname, dpi=200, bbox_inches="tight")
     return fig
 
 
@@ -953,6 +961,21 @@ if __name__ == "__main__":
             plt.close(f)
             f = plot_projections(spp, num)
             plt.close(f)
+            flist=[
+                "nH",
+                "T",
+                "vz",
+                "sigma_para",
+                "vmag",
+                "VAi_mag",
+                "Vcr_mag",
+                "pok_cr",
+                "pok_trbz",
+                "pok",
+                "pok_mag",
+            ]
+            f = plot_slices_cr(spp, num, flist=flist,
+                               time=True, novectors=True, savefig=True)
             head = "cr"
 
     for k, v in zip(spp.hdf5_outid, spp.hdf5_outvar):
@@ -997,6 +1020,13 @@ if __name__ == "__main__":
     if COMM.rank == 0:
         if not osp.isdir(osp.join(spp.basedir, "movies")):
             os.mkdir(osp.join(spp.basedir, "movies"))
+        if head == "cr":
+            fin = osp.join(spp.basedir, f"{head}_slices/*.png")
+            fout = osp.join(spp.basedir, f"movies/{spp.basename}_{head}_slices.mp4")
+            try:
+                make_movie(fin, fout, fps_in=15, fps_out=15)
+            except FileNotFoundError:
+                pass
         fin = osp.join(spp.basedir, f"{head}_snapshot/*.png")
         fout = osp.join(spp.basedir, f"movies/{spp.basename}_{head}_snapshot.mp4")
         try:
@@ -1004,8 +1034,6 @@ if __name__ == "__main__":
         except FileNotFoundError:
             pass
 
-        if not osp.isdir(osp.join(spp.basedir, "movies")):
-            os.mkdir(osp.join(spp.basedir, "movies"))
         fin = osp.join(spp.basedir, f"{head}_snapshot_prj/*.png")
         fout = osp.join(spp.basedir, f"movies/{spp.basename}_{head}_snapshot_prj.mp4")
         try:
@@ -1013,8 +1041,6 @@ if __name__ == "__main__":
         except FileNotFoundError:
             pass
 
-        if not osp.isdir(osp.join(spp.basedir, "movies")):
-            os.mkdir(osp.join(spp.basedir, "movies"))
         fin = osp.join(spp.basedir, "snapshot/*.png")
         fout = osp.join(spp.basedir, f"movies/{spp.basename}_snapshot.mp4")
         try:

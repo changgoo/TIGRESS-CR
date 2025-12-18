@@ -258,13 +258,18 @@ class LoadSimTIGRESSPP(
             dfi.dfi["vmag"]["imshow_args"]["norm"] = dfi.dfi["Vcr_mag"]["imshow_args"][
                 "norm"
             ]
-            dfi.dfi["pok_cr"]["imshow_args"]["norm"] = LogNorm(1.0e2, 5.0e4)
+            dfi.dfi["pok_cr"]["imshow_args"]["norm"] = LogNorm(5.0e1, 5.0e4)
             for pok_field in ["pok", "pok_mag", "pok_trbz", "pok_cr"]:
                 # cmap = dfi.dfi["pok_cr"]["imshow_args"]["cmap"]
                 cmap = cm.plasma
                 dfi.dfi[pok_field]["imshow_args"]["cmap"] = cmap
                 norm = dfi.dfi["pok_cr"]["imshow_args"]["norm"]
                 dfi.dfi[pok_field]["imshow_args"]["norm"] = norm
+
+            # adjust label, norm, etc
+            for f in ["vmag", "Vcr_mag", "VAi_mag"]:
+                dfi.dfi[f]["imshow_args"]["norm"] = LogNorm(vmin=1, vmax=500)
+                dfi.dfi[f]["imshow_args"]["cmap"] = cmr.prinsenvlag_r
         for k in dfi.dfi:
             sp = dfi.dfi[k]["label"].split(r"\;")
             if len(sp) == 2:
@@ -275,6 +280,7 @@ class LoadSimTIGRESSPP(
             else:
                 dfi.dfi[k]["label_name"] = dfi.dfi[k]["label"]
                 dfi.dfi[k]["label_unit"] = ""
+        dfi.dfi["vmag"]["label_name"] = "$|v|$"
         self.dfi = dfi.dfi
 
     def get_pdf(
