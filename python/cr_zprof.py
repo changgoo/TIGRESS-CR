@@ -2,11 +2,8 @@ import os
 import os.path as osp
 import glob
 
-from python import pdf
 import xarray as xr
-
 import numpy as np
-import matplotlib.pyplot as plt
 
 from scipy.optimize import curve_fit
 
