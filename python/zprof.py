@@ -21,7 +21,8 @@ class Zprof:
             mtime = -1
             for f in self.files["zprof"]:
                 mtime = max(osp.getmtime(f), mtime)
-            return max(mtime, osp.getmtime(__file__))
+            return mtime
+            # return max(mtime, osp.getmtime(__file__))
 
         if self.ff.zprof_separate_vz:
             dlist_pvz = dict()

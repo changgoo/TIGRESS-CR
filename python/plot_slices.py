@@ -5,16 +5,13 @@ import os.path as osp
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pyathena.tigresspp.load_sim_tigresspp import LoadSimTIGRESSPP
+from load_sim_tigresspp import LoadSimTIGRESSPP
 from pyathena.plt_tools.make_movie import make_movie
 from pyathena.plt_tools.plt_starpar import scatter_sp, legend_sp, colorbar_sp
 
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from mpl_toolkits.axes_grid1 import ImageGrid
 from mpi4py import MPI
-
-# model_colors = dict(crmhd="#000000",mhd="#E77500")
-model_colors = dict(mhd="#000000", crmhd="#E77500")
 
 
 def plot_slice_xy(
@@ -573,7 +570,7 @@ def plot_snapshot(
     plt.sca(g1[0])
     time = slc_xy.attrs["time"]
     plt.annotate(
-        f"Model: {sim.basename}  time={time*sim.u.Myr:6.1f} Myr",
+        f"Model: {sim.basename}  time={time * sim.u.Myr:6.1f} Myr",
         (0, 1.0),
         xycoords="axes fraction",
         va="bottom",
@@ -591,9 +588,11 @@ def plot_snapshot(
 
 
 def plot_snapshot_comp(
-    sa,
+    sims,
     models,
     nums,
+    model_name,
+    model_color,
     parnums=None,
     kpc=False,
     fields_xy=("Sigma", "nH", "T"),
@@ -612,7 +611,7 @@ def plot_snapshot_comp(
     to create Figure 3 for the TIGRESS-CR paper
     """
     # for initialization
-    sim = sa.set_model(models[0])
+    sim = sims[models[0]]
 
     # setup figure and axes grid
     nxy = len(fields_xy)
@@ -660,7 +659,9 @@ def plot_snapshot_comp(
     for k, (model, num, parnum, xygrid, xzgrid) in enumerate(
         zip(models, nums, parnums, [g1[:nxy], g1[nxy:]], [g2, g3])
     ):
-        sim = sa.set_model(model)
+        sim = sims[model]
+        name = model_name[model]
+        color = model_color[model]
 
         # read slice/projection/star particle data
         outid = None
@@ -791,15 +792,15 @@ def plot_snapshot_comp(
                 # ax.axes.get_xaxis().set_visible(False)
                 # ax.axes.get_yaxis().set_visible(False)
         plt.sca(xygrid[0])
-        plt.title(model, color=model_colors[model])
+        plt.title(name, color=color)
         plt.sca(xzgrid[1])
         tMyr = slc_xy.attrs["time"] * sim.u.Myr
         plt.annotate(
-            f"{model}, time={tMyr:.1f} Myr",
+            f"{name}, time={tMyr:.1f} Myr",
             (1, 1.11),
             xycoords="axes fraction",
             ha="center",
-            color=model_colors[model],
+            color=color,
         )
     ax = xzgrid[-1]
     ax.tick_params(labelbottom=True, labelleft=False, labelright=True)
@@ -933,7 +934,7 @@ def plot_slices_cr(
 if __name__ == "__main__":
     spp = LoadSimTIGRESSPP(sys.argv[1])
     spp.update_derived_fields()
-    spp.dt = [spp.par[f"output{i+1}"]["dt"] for i, v in enumerate(spp.out_fmt)]
+    spp.dt = [spp.par[f"output{i + 1}"]["dt"] for i, v in enumerate(spp.out_fmt)]
 
     COMM = MPI.COMM_WORLD
     mynums = [spp.nums[i] for i in range(len(spp.nums)) if i % COMM.size == COMM.rank]
