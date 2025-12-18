@@ -121,6 +121,15 @@ outdir = "../figures"
 
 
 def set_outdir(dirname):
+    """Set the global output directory for saving figures.
+
+    Creates the directory if it does not exist.
+
+    Parameters
+    ----------
+    dirname : str
+        Path to the output directory
+    """
     global outdir
     outdir = dirname
     os.makedirs(outdir, exist_ok=True)
@@ -174,6 +183,22 @@ def fit_exponential_profile(z, P, return_all=False, zmin=0.1, zmax=1):
 
 
 def load_zprof_postproc(s):
+    """Load and cache z-profiles from post-processed output.
+
+    Loads zprof data for each snapshot, creates NetCDF files in zprof_postproc
+    directory, and constructs phase-aggregated data. Adds phase-based aggregations
+    like 'wc' (warm+cold+neutral) and 'hot' (WHIM+HIM).
+
+    Parameters
+    ----------
+    s : LoadSim
+        Simulation object with data loading methods
+
+    Returns
+    -------
+    xr.Dataset
+        Time-concatenated z-profile data in s.zp_pp
+    """
     zpoutdir = osp.join(s.savdir, "zprof_postproc")
     os.makedirs(zpoutdir, exist_ok=True)
     zplist = []
@@ -212,6 +237,19 @@ def load_zprof_postproc(s):
 
 
 def plot_injection(s, **kwargs):
+    """Plot CR injection rate as a function of z from supernova positions.
+
+    Extracts SN positions from the SN catalog, histograms them in z,
+    and computes the injection rate based on simulation parameters
+    (energy per SN, particle mass, and time interval).
+
+    Parameters
+    ----------
+    s : LoadSim
+        Simulation object with domain and parameters
+    **kwargs
+        Additional arguments passed to plt.plot()
+    """
     import astropy.units as au
     import astropy.constants as ac
     import pandas as pd
@@ -236,6 +274,26 @@ def plot_injection(s, **kwargs):
 
 
 def get_model_table_line(s):
+    """Generate a formatted table line describing simulation parameters.
+
+    Extracts and formats key simulation parameters (physics, resolution,
+    boundary conditions, etc.) into a LaTeX-formatted table row. Also
+    classifies the simulation into a group (default, mhd, crmhd, sigma, etc.).
+
+    Parameters
+    ----------
+    s : LoadSim
+        Simulation object with parameters
+
+    Returns
+    -------
+    name : str
+        Simulation name
+    line : str
+        Formatted LaTeX table row
+    group : str
+        Classification group for organizing simulations
+    """
     par = s.par
     prob = s.par["problem"]
     mesh = s.par["mesh"]
@@ -295,6 +353,24 @@ def get_model_table_line(s):
 def cr_data_load(
     basedir="/scratch/gpfs/EOST/changgoo/tigress_classic/", pattern="*mhd*"
 ):
+    """Load simulation folders and initialize color/name mappings.
+
+    Scans a base directory for simulation folders matching a pattern,
+    creates a dictionary mapping normalized names to folder paths, and
+    assigns colors/names to new simulations not in predefined mappings.
+
+    Parameters
+    ----------
+    basedir : str
+        Base directory containing simulation folders
+    pattern : str
+        Glob pattern for selecting simulation folders
+
+    Returns
+    -------
+    model_dict : dict
+        Mapping from simulation name to folder path
+    """
     folders = sorted(glob.glob(osp.join(basedir, pattern)))
     icolor = 0
     model_dict = dict()
@@ -312,6 +388,21 @@ def cr_data_load(
 
 
 def cr_data_group(sims):
+    """Group simulations by classification based on parameters.
+
+    Classifies each simulation into groups (default, mhd, crmhd, sigma, etc.)
+    using get_model_table_line(). Creates nested dictionary structure.
+
+    Parameters
+    ----------
+    sims : LoadSimAll
+        Container with list of simulation models
+
+    Returns
+    -------
+    sim_group : dict
+        Nested dictionary: sim_group[group_name][model_name] = LoadSim object
+    """
     sim_group = dict()
     sim_group["default"] = dict()
     for m in sims.models:
@@ -327,6 +418,18 @@ def cr_data_group(sims):
 
 
 def load_group(sim_group, group="default"):
+    """Load and process z-profile data for a group of simulations.
+
+    Loads zprof and hst (history) data for all simulations in a group,
+    and creates phase-aggregated z-profile data (warm cloud, hot phases).
+
+    Parameters
+    ----------
+    sim_group : dict
+        Nested dictionary of simulations by group
+    group : str
+        Name of the group to load (default="default")
+    """
     sg = sim_group[group]
 
     for name, s in sg.items():
@@ -349,6 +452,18 @@ def load_group(sim_group, group="default"):
 
 
 def create_windpdf(simgroup, gr):
+    """Create wind PDF (probability distribution function) by concatenating snapshots.
+
+    Combines wind probability functions from all snapshots into time-concatenated
+    NetCDF files (outpdf.nc, inpdf.nc) for outflow and inflow respectively.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to process
+    """
     for m, s in simgroup[gr].items():
         outpdf = []
         inpdf = []
@@ -362,6 +477,17 @@ def create_windpdf(simgroup, gr):
 
 
 def load_windpdf(s):
+    """Load and process wind probability distribution functions.
+
+    Loads outflow and inflow PDFs, normalizes by volume and area,
+    computes reference fluxes from star formation, and extracts
+    flux values at specific altitudes (500-3000 pc).
+
+    Parameters
+    ----------
+    s : LoadSim
+        Simulation object; populates s.outflux and s.influx attributes
+    """
     pdf_outdir = os.path.join(s.savdir, "windpdf")
     with xr.open_dataarray(os.path.join(pdf_outdir, "outpdf.nc")) as da:
         s.outpdf = (
@@ -408,6 +534,20 @@ def load_windpdf(s):
 
 
 def plot_zprof_mean_quantile(ydata, quantile=True, **kwargs):
+    """Plot z-profile as mean line with quantile shading.
+
+    Plots the time-averaged profile as a line and optionally shades
+    the 16th-84th percentile range (1-sigma equivalent).
+
+    Parameters
+    ----------
+    ydata : xr.DataArray
+        Profile data with time dimension (z-profile over time)
+    quantile : bool
+        If True, overlay shaded quantile band
+    **kwargs
+        Additional arguments passed to plt.plot() and plt.fill_between()
+    """
     q = ydata.quantile([0.16, 0.5, 0.84], dim="time")
     qmean = ydata.mean(dim="time")
 
@@ -424,6 +564,20 @@ def plot_zprof_mean_quantile(ydata, quantile=True, **kwargs):
 
 
 def plot_zprof_quantile(ydata, quantile=True, **kwargs):
+    """Plot z-profile median line with quantile shading.
+
+    Plots the time-median profile as a line and optionally shades
+    the 16th-84th percentile range.
+
+    Parameters
+    ----------
+    ydata : xr.DataArray
+        Profile data with time dimension
+    quantile : bool
+        If True, overlay shaded quantile band
+    **kwargs
+        Additional arguments passed to plt.plot() and plt.fill_between()
+    """
     q = ydata.quantile([0.16, 0.5, 0.84], dim="time")
 
     plt.plot(q.z / 1.0e3, q.sel(quantile=0.5), **kwargs)
@@ -439,6 +593,28 @@ def plot_zprof_quantile(ydata, quantile=True, **kwargs):
 
 
 def plot_zprof(zprof, field, ph, norm=1.0, line="median", quantile=True, **kwargs):
+    """Plot a z-profile field for a given phase with optional normalization.
+
+    Extracts and normalizes data for a specific field and phase,
+    then plots using median or mean line style with optional quantiles.
+
+    Parameters
+    ----------
+    zprof : xr.Dataset
+        Z-profile dataset with field variables
+    field : str
+        Field name to plot
+    ph : str
+        Phase name (e.g., 'wc', 'hot', 'CNM')
+    norm : float
+        Normalization factor (default=1.0)
+    line : str
+        Line style: 'median' or 'mean' (default='median')
+    quantile : bool
+        If True, overlay shaded quantile band (default=True)
+    **kwargs
+        Additional arguments for plotting
+    """
     if field not in zprof:
         return
     ydata = zprof[field].sel(phase=ph) / norm
@@ -451,6 +627,26 @@ def plot_zprof(zprof, field, ph, norm=1.0, line="median", quantile=True, **kwarg
 
 
 def plot_zprof_field(zprof, field, ph, line="median", quantile=True, **kwargs):
+    """Plot area-weighted z-profile field.
+
+    Computes area-weighted average of a field for a given phase
+    and plots with quantile shading.
+
+    Parameters
+    ----------
+    zprof : xr.Dataset
+        Z-profile dataset
+    field : str
+        Field name to plot
+    ph : str
+        Phase name
+    line : str
+        Line style: 'median' or 'mean'
+    quantile : bool
+        If True, overlay quantile band
+    **kwargs
+        Additional arguments for plotting
+    """
     if field not in zprof:
         return
     ydata = zprof[field].sel(phase=ph)
@@ -468,6 +664,28 @@ def plot_zprof_field(zprof, field, ph, line="median", quantile=True, **kwargs):
 def plot_zprof_frac(
     zprof, field, ph, denominator="area", line="median", quantile=True, **kwargs
 ):
+    """Plot fractional z-profile (e.g., volume fraction by phase).
+
+    Computes the fraction of a field relative to a denominator
+    (typically area for volume fraction) and plots with quantiles.
+
+    Parameters
+    ----------
+    zprof : xr.Dataset
+        Z-profile dataset
+    field : str
+        Numerator field name
+    ph : str or list
+        Phase name(s) to include in numerator
+    denominator : str
+        Denominator field (default='area')
+    line : str
+        Line style: 'median' or 'mean'
+    quantile : bool
+        If True, overlay quantile band
+    **kwargs
+        Additional arguments for plotting
+    """
     if field not in zprof:
         return
     if "whole" in zprof.phase:
@@ -484,6 +702,16 @@ def plot_zprof_frac(
 
 
 def print_sim_table(sims):
+    """Print a formatted table of simulation parameters to stdout.
+
+    Generates and prints a LaTeX-formatted table with parameters
+    for all simulations, including group classification.
+
+    Parameters
+    ----------
+    sims : LoadSimAll
+        Container with list of simulation models
+    """
     line = (
         f"{'name':<40s} & {'physics':<10s} & {'beta':<5.0s} & {'Lz':<10.0s} & {'dx':<5.0s} & "
         f"{'mhdbc':<10s} & {'crbc':<10s} & {'vmax':<10s} & {'sigma':<10s} & {'grav':<10s} \\\\"
@@ -496,6 +724,20 @@ def print_sim_table(sims):
 
 
 def plot_massflux_tz(simgroup, gr, ph="wc"):
+    """Create space-time diagram of mass flux for a simulation group.
+
+    Plots outflow (top row) and inflow (bottom row) mass flux as
+    2D color maps (z vs time) for each simulation in the group.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    ph : str
+        Phase selection (default='wc' for warm+cold+neutral)
+    """
     with plt.style.context({"axes.grid": False}):
         sims = simgroup[gr]
         models = list(sims.keys())
@@ -569,6 +811,18 @@ def plot_massflux_tz(simgroup, gr, ph="wc"):
 
 
 def plot_flux_tz(simgroup, gr):
+    """Create space-time diagrams of various fluxes for a simulation group.
+
+    Plots mass flux, MHD pressure flux, and MHD energy flux as 2D color maps
+    (z vs time) for outflows, with separate panels for different flux types.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    """
     with plt.style.context({"axes.grid": False}):
         sims = simgroup[gr]
         models = list(sims.keys())
@@ -653,6 +907,20 @@ def plot_flux_tz(simgroup, gr):
 
 
 def plot_pressure_tz(simgroup, gr, ph="wc"):
+    """Create space-time diagrams of pressure components for a simulation group.
+
+    Plots CR, thermal, kinetic, and magnetic pressure as 2D color maps
+    (z vs time) for each simulation in the group.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    ph : str
+        Phase selection (default='wc')
+    """
     with plt.style.context({"axes.grid": False}):
         sims = simgroup[gr]
         models = list(sims.keys())
@@ -720,6 +988,21 @@ def plot_pressure_tz(simgroup, gr, ph="wc"):
 
 
 def plot_pressure_z(simgroup, gr, ph="wc"):
+    """Plot pressure components vs. height with exponential fits.
+
+    Creates 4-panel plot showing CR, thermal, kinetic, and magnetic pressure
+    profiles for all simulations in a group. Fits exponential profiles to
+    pressure data and overlays fitted curves.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    ph : str
+        Phase selection (default='wc')
+    """
     sims = simgroup[gr]
     models = list(sims.keys())
     fig, axes = plt.subplots(1, 4, figsize=(8, 3), sharey=True, constrained_layout=True)
@@ -787,6 +1070,18 @@ def plot_pressure_z(simgroup, gr, ph="wc"):
 
 
 def plot_volume_fraction_z(simgroup, gr):
+    """Plot phase volume fractions as a function of height.
+
+    Shows the contribution of each phase (CNM+UNM, WNM, WHIM, HIM)
+    to the total volume as a function of altitude.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    """
     sims = simgroup[gr]
     models = list(sims.keys())
     nmodels = len(models)
@@ -821,6 +1116,26 @@ def plot_volume_fraction_z(simgroup, gr):
 def plot_profile_frac_z(
     simgroup, gr, vz_dir=None, field="rho", line="median", savefig=True
 ):
+    """Plot fractional profiles (e.g., density) by phase as a function of height.
+
+    Optionally filters by vertical velocity direction to separate
+    inflows and outflows. Shows fractional contribution of each phase.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    vz_dir : int or None
+        Vertical velocity direction filter (1 for outflow, -1 for inflow, None for both)
+    field : str
+        Field to plot (default='rho' for density)
+    line : str
+        Line style (default='median')
+    savefig : bool
+        If True, save figure (default=True)
+    """
     sims = simgroup[gr]
     models = list(sims.keys())
     nmodels = len(models)
@@ -869,6 +1184,23 @@ def plot_profile_frac_z(
 
 
 def plot_profile_z(simgroup, gr, field="rho", savefig=True):
+    """Plot vertical profiles of a field by phase for a simulation group.
+
+    Creates side-by-side plots showing profiles of a specified field
+    (density, pressure, etc.) as a function of height for each simulation,
+    with lines for each phase (CNM+UNM, WNM, WHIM, HIM).
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    field : str
+        Field to plot (default='rho' for density)
+    savefig : bool
+        If True, save figure (default=True)
+    """
     sims = simgroup[gr]
     models = list(sims.keys())
     nmodels = len(models)
@@ -905,6 +1237,20 @@ def plot_profile_z(simgroup, gr, field="rho", savefig=True):
 
 
 def plot_fraction_z(simgroup, gr, field="rho"):
+    """Plot fractional profiles of a field by phase for a simulation group.
+
+    Creates side-by-side plots showing fractional contribution of each phase
+    to a field as a function of height, with values normalized to 1.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    field : str
+        Field to plot (default='rho' for density)
+    """
     sims = simgroup[gr]
     models = list(sims.keys())
     nmodels = len(models)
@@ -940,6 +1286,20 @@ def plot_fraction_z(simgroup, gr, field="rho"):
 
 
 def plot_fraction_ph_z(simgroup, gr, field="rho"):
+    """Plot fractional profiles separated by aggregated phase categories.
+
+    Creates a 2-panel plot comparing warm cloud (wc) and hot phases,
+    showing fractional profiles of a field for all simulations.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    field : str
+        Field to plot (default='rho' for density)
+    """
     sims = simgroup[gr]
     fig, axes = plt.subplots(
         1,
@@ -969,6 +1329,18 @@ def plot_fraction_ph_z(simgroup, gr, field="rho"):
 
 
 def plot_mass_fraction_t(simgroup, gr):
+    """Plot mass fractions in different phases as a function of time.
+
+    Shows the evolution of cold, warm, and hot phase mass fractions
+    over the simulation time for all simulations in a group.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    """
     sims = simgroup[gr]
     models = list(sims.keys())
     nmodels = len(models)
@@ -1003,6 +1375,18 @@ def plot_mass_fraction_t(simgroup, gr):
 
 
 def plot_rho_z(simgroup, gr):
+    """Plot density and pressure/energy profiles for warm and hot phases.
+
+    Creates a 4x2 grid of plots showing density, kinetic, thermal, and
+    magnetic pressure for warm cloud and hot phases, organized by simulation.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    """
     sims = simgroup[gr]
     models = list(sims.keys())
     nmodels = len(models)
@@ -1036,6 +1420,18 @@ def plot_rho_z(simgroup, gr):
 
 
 def plot_rhov_z(simgroup, gr):
+    """Plot density and velocity profiles for warm cloud phase.
+
+    Creates a 4-panel plot showing density, vertical velocity, Alfvén
+    velocity, and CR drift velocity profiles for warm cloud phase.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    """
     sims = simgroup[gr]
     models = list(sims.keys())
     nmodels = len(models)
@@ -1075,7 +1471,25 @@ def plot_rhov_z(simgroup, gr):
 
 
 def update_stress(s, dset):
-    # stresses
+    """Calculate and add stress/pressure components to dataset.
+
+    Computes derived pressure quantities from raw fields:
+    - Thermal and kinetic pressure from temperature and turbulence
+    - Magnetic pressure tensor components
+    - Total pressure
+
+    Parameters
+    ----------
+    s : LoadSim
+        Simulation object with unit information
+    dset : xr.Dataset
+        Z-profile dataset to update in-place
+
+    Returns
+    -------
+    xr.Dataset
+        Updated dataset with new stress fields
+    """
     dset["Pok_th"] = dset["press"] * s.u.pok
     dset["Pok_kin"] = dset["Pturbz"] * s.u.pok
     dset["Pok_tot"] = dset["Pok_th"] + dset["Pok_kin"]
@@ -1119,6 +1533,28 @@ def update_stress(s, dset):
 
 
 def update_flux(s, dset_, vz_dir=None, both=False):
+    """Calculate and add flux components to dataset.
+
+    Computes mass, pressure, and energy fluxes in vertical direction.
+    Handles optional filtering by vertical velocity direction (inflow/outflow)
+    and folding of lower/upper hemisphere data.
+
+    Parameters
+    ----------
+    s : LoadSim
+        Simulation object with domain and unit information
+    dset_ : xr.Dataset
+        Z-profile dataset with flux input fields
+    vz_dir : int or None
+        Vertical velocity direction filter (1 for outflow, -1 for inflow, None for both)
+    both : bool
+        If True, fold and sum both hemispheres (default=False)
+
+    Returns
+    -------
+    xr.Dataset
+        Dataset with computed flux fields
+    """
     # fluxes
     # total area
     area = np.prod(s.domain["Lx"][:-1])
@@ -1172,6 +1608,18 @@ def update_flux(s, dset_, vz_dir=None, both=False):
 
 
 def plot_cr_velocity_sigma(simgroup, gr):
+    """Plot CR transport properties and energy densities for a simulation group.
+
+    Creates a 5x2 grid showing effective sound speed, diffusion coefficient,
+    diffusivity, heating rate, and CR work for both warm cloud and hot phases.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    """
     sims = simgroup[gr]
     fig, axes = plt.subplots(
         5, 2, figsize=(6, 10), sharex=True, constrained_layout=True
@@ -1286,6 +1734,22 @@ def plot_cr_velocity_sigma(simgroup, gr):
 
 
 def plot_flux_z(simgroup, gr, both=True, vz_dir=None):
+    """Plot mass, pressure, and energy fluxes for a simulation group.
+
+    Creates a 3x2 grid showing mass flux, MHD pressure flux, and energy flux
+    for warm cloud and hot phases. Optionally separates outflow and inflow.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    both : bool
+        If True, fold both hemispheres (default=True)
+    vz_dir : int or None
+        Filter by vertical velocity direction (default=None for both)
+    """
     sims = simgroup[gr]
     fig, axes = plt.subplots(
         3, 2, figsize=(8, 7), sharey="row", sharex="col", constrained_layout=True
@@ -1385,6 +1849,22 @@ def plot_flux_z(simgroup, gr, both=True, vz_dir=None):
 
 
 def plot_loading_z(simgroup, gr, vz_dir=None, both=True):
+    """Plot flux loading (normalized by reference star formation) for a simulation group.
+
+    Creates a 3x2 grid showing normalized mass, pressure, and energy fluxes
+    relative to star formation-driven input rates for warm cloud and hot phases.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    vz_dir : int or None
+        Filter by vertical velocity direction (default=None for both)
+    both : bool
+        If True, fold both hemispheres (default=True)
+    """
     sims = simgroup[gr]
     fig, axes = plt.subplots(
         3, 2, figsize=(8, 7), sharey="row", sharex="col", constrained_layout=True
@@ -1521,6 +2001,18 @@ def plot_loading_z(simgroup, gr, vz_dir=None, both=True):
 
 
 def plot_area_mass_fraction_z(simgroup, gr):
+    """Plot area and density fractions by phase with outflow contributions.
+
+    Creates a 2xN grid (where N is number of simulations) showing area fraction
+    (top row) and density (bottom row) by phase, including outflow-only fractions.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    """
     sims = simgroup[gr]
     models = list(sims.keys())
     nmodels = len(models)
@@ -1591,6 +2083,18 @@ def plot_area_mass_fraction_z(simgroup, gr):
 
 
 def plot_vertical_proflies_separate(simgroup, gr):
+    """Plot separate panels for vertical profiles (area, density) and flow directions.
+
+    Creates multiple plots showing area and density fraction profiles,
+    separated by overall vs. outflow-only contributions.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    """
     field = "area"
     plot_profile_frac_z(simgroup, gr, field=field, line="mean", savefig=False)
     plt.ylabel(r"$f_A$")
@@ -1630,6 +2134,23 @@ def plot_vertical_proflies_separate(simgroup, gr):
 
 
 def plot_velocity_z(simgroup, gr, ph="wc", savefig=True):
+    """Plot vertical velocity profiles for a simulation group.
+
+    Creates a 4-panel plot showing bulk vertical velocity, CR Alfvén velocity,
+    CR drift velocity, and effective CR velocity for warm cloud phase,
+    separated into outflow and net contributions.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    ph : str
+        Phase selection (default='wc' for warm cloud)
+    savefig : bool
+        If True, save figure (default=True)
+    """
     sims = simgroup[gr]
     models = list(sims.keys())
 
@@ -1729,6 +2250,20 @@ def plot_velocity_z(simgroup, gr, ph="wc", savefig=True):
 
 
 def plot_history(simgroup, gr, savefig=True):
+    """Plot simulation history (star formation rate and other quantities).
+
+    Creates a 2-panel plot showing star formation rate and vertical momentum
+    transfer over time, with time-averaged values indicated.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    savefig : bool
+        If True, save figure (default=True)
+    """
     sims = simgroup[gr]
     fig, axes = plt.subplots(
         1, 2, figsize=(8, 2.5), sharex=True, constrained_layout=True
@@ -1785,6 +2320,20 @@ def plot_history(simgroup, gr, savefig=True):
 
 
 def plot_pressure_t(simgroup, gr, ph="wc"):
+    """Plot pressure components vs. time in the disk midplane.
+
+    Creates a 4-panel plot showing CR, thermal, kinetic, and magnetic pressure
+    evolution at z=0 over simulation time for all simulations.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    ph : str
+        Phase selection (default='wc' for warm cloud)
+    """
     sims = simgroup[gr]
     fig, axes = plt.subplots(
         1, 4, figsize=(8, 2), sharey=True, sharex=True, constrained_layout=True
@@ -1827,6 +2376,23 @@ def plot_pressure_t(simgroup, gr, ph="wc"):
 
 
 def plot_vertical_equilibrium_t(simgroup, gr, ph="wc", exclude=[]):
+    """Plot vertical pressure equilibrium evolution over time.
+
+    Creates plots showing pressure balance between midplane and 1 kpc altitude
+    for specified phase, organized by simulation. Computes pressure differences
+    to assess vertical equilibrium.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    ph : str
+        Phase selection (default='wc' for warm cloud)
+    exclude : list
+        List of simulation names to exclude (default=[])
+    """
     sims = simgroup[gr]
     for m in exclude:
         sims = dict(sims)
@@ -1901,6 +2467,20 @@ def plot_vertical_equilibrium_t(simgroup, gr, ph="wc", exclude=[]):
 
 
 def plot_jointpdf(simgroup, gr, savefig=True):
+    """Plot 2D joint PDF of outflow velocity and sound speed.
+
+    Creates a 2D histogram showing the probability distribution of outflow
+    velocity vs. sound speed at multiple altitudes for each simulation.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    savefig : bool
+        If True, save figure (default=True)
+    """
     fig, axes = plt.subplots(
         2,
         4,
@@ -1950,6 +2530,20 @@ def plot_jointpdf(simgroup, gr, savefig=True):
 
 
 def plot_voutpdf(simgroup, gr, savefig=True):
+    """Plot 1D PDFs of outflow velocity separated by phase.
+
+    Creates a 2x2 grid showing 1D probability distributions of outflow velocity
+    and energy flux for warm cloud and hot phases across different altitudes.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    savefig : bool
+        If True, save figure (default=True)
+    """
     fig, axes = plt.subplots(
         2, 2, figsize=(8, 6), sharex="col", sharey="row", constrained_layout=True
     )
@@ -2022,6 +2616,23 @@ def plot_voutpdf(simgroup, gr, savefig=True):
 
 
 def plot_kappa_z(simgroup, gr, phases=["wc", "hot"], savefig=True):
+    """Plot CR diffusion coefficient and inverse (scattering rate) profiles.
+
+    Creates a 2xN grid (where N is number of phases) showing effective
+    diffusivity (kappa) and effective scattering rate (1/kappa) as a
+    function of height.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    phases : list
+        Phase names to plot (default=['wc', 'hot'])
+    savefig : bool
+        If True, save figure (default=True)
+    """
     nph = len(phases)
     sims = simgroup[gr]
     fig, axes = plt.subplots(
@@ -2056,7 +2667,7 @@ def plot_kappa_z(simgroup, gr, phases=["wc", "hot"], savefig=True):
             for axs, ph in zip(axes.T, phases):
                 plt.sca(axs[0])
                 if isinstance(ph, list):
-                    plt.title(f"ph={"+".join(ph)}")
+                    plt.title(f"ph={'+'.join(ph)}")
                 else:
                     plt.title(f"ph={ph}")
 
@@ -2089,6 +2700,23 @@ def plot_kappa_z(simgroup, gr, phases=["wc", "hot"], savefig=True):
 
 
 def plot_gainloss_z(simgroup, gr, phases=["wc", "hot"], savefig=True):
+    """Plot thermal energy loss/gain and CR energy loss/gain rates.
+
+    Creates a 2xN grid showing radiation cooling/heating and CR work/losses
+    (top row) vs. CR losses/injection and CR work (bottom row) as functions
+    of height for specified phases.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    phases : list
+        Phase names to plot (default=['wc', 'hot'])
+    savefig : bool
+        If True, save figure (default=True)
+    """
     nph = len(phases)
     sims = simgroup[gr]
     fig, axes = plt.subplots(
@@ -2140,7 +2768,7 @@ def plot_gainloss_z(simgroup, gr, phases=["wc", "hot"], savefig=True):
             for axs, ph in zip(axes.T, phases):
                 plt.sca(axs[0])
                 if isinstance(ph, list):
-                    plt.title(f"ph={"+".join(ph)}")
+                    plt.title(f"ph={'+'.join(ph)}")
                 else:
                     plt.title(f"ph={ph}")
                 plot_zprof_frac(
@@ -2192,6 +2820,25 @@ def plot_gainloss_z(simgroup, gr, phases=["wc", "hot"], savefig=True):
 
 
 def plot_momentum_transfer_z(simgroup, gr, hot="full", savefig=True, showall=False):
+    """Plot vertical momentum transfer balance and pressure contributions.
+
+    Creates a 2x2 grid showing momentum balance calculations in lower and upper
+    hemispheres, including MHD pressure gradients, turbulent pressure, weight,
+    and CR pressure contributions.
+
+    Parameters
+    ----------
+    simgroup : dict
+        Nested dictionary of grouped simulations
+    gr : str
+        Group name to plot
+    hot : str
+        How to show hot phase contribution: 'full' for total or 'trb' for turbulent only
+    savefig : bool
+        If True, save figure (default=True)
+    showall : bool
+        If True, show all contributions (default=False)
+    """
     fig, axes = plt.subplots(
         2, 2, figsize=(8, 6), sharey=True, sharex="col", constrained_layout=True
     )

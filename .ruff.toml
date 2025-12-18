@@ -1,3 +1,7 @@
 [lint]
-# Skip unused variable rules (`F841`).
+# F841: Local variable assigned but never used
+# E741: Ambiguous variable name (e.g., 'l', 'O', 'I')
+# E402: Module level import not at top of file
+# E731: Do not assign a lambda expression, use a def
+# F401: Module imported but unused
 ignore = ["F841", "E741", "E402", "E731", "F401"]
