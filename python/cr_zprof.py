@@ -257,8 +257,8 @@ def cr_data_load(
         name = os.path.basename(folder)
         name = name.replace("mhdbc_", "").replace("crbc_", "").replace("-icpx", "")
         model_dict[name] = folder
+        print(f"  - {name}")
         if name not in model_color:
-            print(f"  - {name}")
             model_color[name] = f"C{icolor}"
             model_name[name] = name
             icolor += 1

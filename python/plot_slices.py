@@ -814,7 +814,7 @@ def plot_snapshot_comp(
 def plot_slices_cr(
     sim,
     num,
-    kpc=True,
+    kpc=False,
     novectors=False,
     time=False,
     flist=[
@@ -975,7 +975,8 @@ if __name__ == "__main__":
                 "pok_mag",
             ]
             f = plot_slices_cr(spp, num, flist=flist,
-                               time=True, novectors=True, savefig=True)
+                               time=True, savefig=True)
+            plt.close(f)
             head = "cr"
 
     for k, v in zip(spp.hdf5_outid, spp.hdf5_outvar):
