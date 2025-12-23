@@ -15,7 +15,7 @@ from timing import Timing
 from zprof import Zprof
 from slc_prj import SliceProj
 from pdf import PDF
-from prostproc_zprof import PostProcessingZprof
+from postproc_zprof import PostProcessingZprof
 from pyathena.load_sim import LoadSim
 from pyathena.fields.fields import DerivedFields
 
