@@ -29,47 +29,61 @@ model_color = dict()
 
 
 def load(verbose=True):
+    global simgroup, model_name, model_color
     # find models
     model_dict = cr_data_load(basedir)
 
+    # initialize simgroup
+    groups = ["vAi","vAtot","nost","σ28","σ29","crmhd"]
+    for gr in groups:
+        simgroup[gr]=dict()
+
+    # categorize models
+    mlist = []
     for k,d in model_dict.items():
-        a,b = k.replace("crmhd_duale","crmhd-duale").replace("8pc-b1-diode-lngrad_out-","").split("_")
-        head = a.replace("sigma","σ").replace("crmhd-","")
-        if b == "va1":
-            tail = "vAi"
-        elif b == "va0":
-            tail = "vAtot"
-        elif b == "va-1":
-            tail = "nost"
-        newk = "-".join([head,tail])
-        print(newk)
-        sim = LoadSimTIGRESSPP(d, verbose=verbose)
-        if tail not in simgroup:
-            simgroup[tail] = dict()
-        simgroup[tail][newk] = sim
-        model_name[newk] = newk
+        sim = LoadSimTIGRESSPP(d, verbose=False)
+        par = sim.par
+        base_split = sim.basename.split("-")
+        model = []
+        if par["cr"]["self_consistent_flag"] == 0:
+            sigma_exp = int(-np.log10(par["cr"]["sigma"]))
+            sigma=f'σ{sigma_exp}'
+            model.append(sigma)
+            if par["cr"]["valfven_flag"] == 1:
+                model.append("vAi")
+            elif par["cr"]["valfven_flag"] == 0:
+                model.append("vAtot")
+            elif  par["cr"]["valfven_flag"] == -1:
+                model.append("nost")
+                if par["cr"]["vs_flag"]==1:
+                    print("no streaming with invalud valfven_flag")
+            if base_split[0] != "crmhd":
+                model.append(base_split[0].split("_")[1])
+        else:
+            model.append(base_split[0])
+            if par["problem"]["beta0"] != 1:
+                model.append(f'b{par["problem"]["beta0"]}')
+            if par["cr"]["vmax"] != 2.e9:
+                model.append(f'Vmax{int(par["cr"]["vmax"]/1.e9)}')
+        newkey = "-".join(model)
 
-    simgroup["σ29"] = {"σ29-vAi":simgroup["vAi"]["σ29-vAi"],
-                       "σ29-vAtot":simgroup["vAtot"]["σ29-vAtot"],
-                       "σ29-nost":simgroup["nost"]["σ29-nost"],
-                       "duale-σ29-vAi":simgroup["vAi"].pop("duale-σ29-vAi")}
-    simgroup["σ28"] = {"σ28-vAi":simgroup["vAi"]["σ28-vAi"],
-                       "σ28-vAtot":simgroup["vAtot"]["σ28-vAtot"],
-                       "σ28-nost":simgroup["nost"]["σ28-nost"],
-                       }
-    # simgroup["σ27"] = {"σ27-vAi":simgroup["vAi"]["σ27-vAi"],
-    #                    "σ27-vAtot":simgroup["vAtot"]["σ27-vAtot"],
-    #                    "σ27-nost":simgroup["nost"]["σ27-nost"],
-    #                    }
+        if newkey in mlist:
+            print(f"{newkey} is already there")
+        else:
+            for gr in groups:
+                if gr in newkey:
+                    simgroup[gr][newkey]=sim
+        mlist.append(newkey)
+        model_name[newkey] = newkey
+        if verbose:
+            print(f"Renamed {k} --> {newkey}")
 
-    # load data
-    i = 0
+    # load data/ assign colors
     for group in simgroup:
         load_group(simgroup, group)
-        for k in simgroup[group]:
+        for i,k in enumerate(simgroup[group]):
             if k not in model_color:
                 model_color[k] = f"C{i}"
-                i+=1
 
     # setup for plotting scripts
     ps.setup(outdir, model_name, model_color)
