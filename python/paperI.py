@@ -88,6 +88,7 @@ def draw_figures(num="all"):
                 plt.sca(fig.axes[0])
                 plt.plot(time, sfr, marker=marker, color=color, mec=ecolor)
         fig.savefig(osp.join(outdir, f"{group}_history.pdf"))
+        plt.close(fig)
 
     if num == "all" or num == 2:
         # SFR
@@ -155,6 +156,7 @@ def draw_figures(num="all"):
         ps.plot_voutpdf(simgroup, group)
 
     if num == "all" or num == 3:
+        plt.close("all")
         # snapshots
         with plt.style.context({"axes.grid": False}):
             nums = [snapshot_nums["mhd"][0], snapshot_nums["crmhd"][0]]
@@ -169,6 +171,7 @@ def draw_figures(num="all"):
             fig1.savefig(osp.join(outdir, "snapshot_faceon.png"))
             fig2.savefig(osp.join(outdir, "snapshot_edgeon.png"))
 
+        plt.close("all")
         with plt.style.context({"axes.grid": False}):
             nums = [snapshot_nums["mhd"][1], snapshot_nums["crmhd"][1]]
             fig1, fig2 = plot_snapshot_comp(
@@ -197,12 +200,13 @@ def draw_figures(num="all"):
             sim.dfi[f]["imshow_args"]["norm"] = LogNorm(vmin=1, vmax=500)
             sim.dfi[f]["imshow_args"]["cmap"] = cmr.prinsenvlag_r
         with plt.style.context({"axes.grid": False}):
-            f = plot_slices_cr(sim, snapshot_nums["crmhd"][0], kpc=False)
-            f.savefig(osp.join(outdir, "snapshot.png"))
+            plt.close("all")
+            fig = plot_slices_cr(sim, snapshot_nums["crmhd"][0], kpc=False)
+            fig.savefig(osp.join(outdir, "snapshot.png"))
 
-            f = plot_slices_cr(sim, snapshot_nums["crmhd"][1], kpc=False)
-            f.savefig(osp.join(outdir, "snapshot_quiet.png"))
-
+            plt.close("all")
+            fig = plot_slices_cr(sim, snapshot_nums["crmhd"][1], kpc=False)
+            fig.savefig(osp.join(outdir, "snapshot_quiet.png"))
 
 if __name__ == "__main__":
     load()
