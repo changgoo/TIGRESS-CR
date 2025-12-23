@@ -128,7 +128,7 @@ class Zprof:
         if not hasattr(self, "zprof"):
             self.zprof = self.load_zprof()
 
-        zp_pp = zp_pp.assign_coords(phase=self.zprof.phase[:-1])
+        zp_pp = zp_pp.assign_coords(phase=self.zprof.phase)
         zp_pp["area"] = (
             self.zprof["area"].sel(phase=zp_pp.phase).interp(time=zp_pp["time"])
         )

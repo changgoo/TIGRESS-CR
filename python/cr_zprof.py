@@ -314,7 +314,7 @@ def load_group(sim_group, group="default"):
     for name, s in sg.items():
         print(f"loading {name}...")
         if not hasattr(s, "zprof"):
-            s.zprof = s.load_zprof()
+            s.zprof = s.load_zprof().drop_sel(phase="whole")
         s.zp_ph = xr.concat(
             [
                 s.zprof.sel(phase=["CNM", "UNM", "WNM"])
