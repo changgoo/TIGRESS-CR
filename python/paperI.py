@@ -117,10 +117,12 @@ def draw_figures(num="all"):
 
     if num == "all" or num == 8:
         # gain/loss
-        ps.plot_gainloss_z(simgroup, group, tslice=tslice)
+        m = model_default[1]
+        sim = simgroup[group][m]
+        ps.plot_gainloss_z(sim, m, tslice=tslice)
         ps.plot_gainloss_z(
-            simgroup,
-            group,
+            sim,
+            m,
             phases=[["CNM", "UNM", "WNM"], "WHIM", "HIM"],
             tslice=tslice,
         )

@@ -1899,7 +1899,7 @@ def plot_kappa_z(
 
 
 def plot_gainloss_z(
-    simgroup, gr, phases=["wc", "hot"], tslice=slice(150, 500), kpc=True, savefig=True
+    s, m, phases=["wc", "hot"], tslice=slice(150, 500), kpc=True, savefig=True
 ):
     """Plot thermal energy loss/gain and CR energy loss/gain rates.
 
@@ -1923,7 +1923,6 @@ def plot_gainloss_z(
         If True, save figure (default=True)
     """
     nph = len(phases)
-    sims = simgroup[gr]
     fig, axes = plt.subplots(
         2,
         nph,
@@ -1933,93 +1932,89 @@ def plot_gainloss_z(
         constrained_layout=True,
     )
 
-    for m, s in sims.items():
-        color = model_color[m]
-        if s.options["cosmic_ray"]:
-            if phases[0] == "wc" and phases[1] == "hot":
-                dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
-                dset = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
-            else:
-                dset_pp = s.zp_pp.sel(time=tslice).sum(dim="vz_dir")
-                dset = s.zprof.sel(time=tslice).sum(dim="vz_dir")
-            dset_pp["cr_heating"] = (
-                -dset_pp["Gamma_cr_stream"] * (s.u.energy_density / s.u.time).cgs.value
-            )
-            dset_pp["rad_cooling"] = (
-                dset_pp["cool_rate"] * (s.u.energy_density / s.u.time).cgs.value
-            )
-            dset_pp["rad_heating"] = (
-                dset_pp["heat_rate"] * (s.u.energy_density / s.u.time).cgs.value
-            )
-            dset_pp["cr_work"] = (
-                dset_pp["CRwork_total"] * (s.u.energy_density / s.u.time).cgs.value
-            )
-            dset_pp["cr_loss"] = (
-                -dset_pp["CRLosses"] * (s.u.energy_density / s.u.time).cgs.value
-            )
-            if "0-heating_cr" in dset:
-                dset["cr_heating"] = (
-                    -dset["0-heating_cr"] * (s.u.energy_density / s.u.time).cgs.value
-                )
-            if "0-work_cr" in dset:
-                dset["cr_work"] = (
-                    dset["0-work_cr"] * (s.u.energy_density / s.u.time).cgs.value
-                )
-            tdec_scr = s.par["feedback"]["tdec_scr"] * s.u.Myr
-            dset["CRinj_rate"] = (dset["sCR"] / tdec_scr) * (
-                s.u.energy_density / s.u.time
-            ).cgs.value
-            for axs, ph in zip(axes.T, phases):
-                plt.sca(axs[0])
-                if isinstance(ph, list):
-                    plt.title(f"ph={'+'.join(ph)}")
-                else:
-                    plt.title(f"ph={ph}")
-                plot_zprof_frac(
-                    dset_pp,
-                    "cool_rate",
-                    ph,
-                    kpc=kpc,
-                    color="C0",
-                    label=r"$n_H^2 \Lambda$",
-                )
-                plot_zprof_frac(
-                    dset_pp,
-                    "cr_heating",
-                    ph,
-                    kpc=kpc,
-                    color="C1",
-                    label=r"$\mathcal{G}_{\rm cr, st}$",
-                )
-                plot_zprof_frac(
-                    dset_pp, "heat_rate", ph, kpc=kpc, color="C2", label=r"$n_H \Gamma$"
-                )
+    color = model_color[m]
+    name = model_name[m]
 
-                plt.sca(axs[1])
-                plot_zprof_frac(
-                    dset_pp,
-                    "cr_loss",
-                    ph,
-                    kpc=kpc,
-                    color="C0",
-                    label=r"$\mathcal{L}_{\rm cr}$",
-                )
-                plot_zprof_frac(
-                    dset,
-                    "CRinj_rate",
-                    ph,
-                    kpc=kpc,
-                    color="C1",
-                    label=r"$e_{\rm cr}/t_{\rm dec}$",
-                )
-                plot_zprof_frac(
-                    dset_pp,
-                    "cr_work",
-                    ph,
-                    kpc=kpc,
-                    color="C2",
-                    label=r"$W_{\rm gas-cr}$",
-                )
+    if phases[0] == "wc" and phases[1] == "hot":
+        dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
+        dset = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
+    else:
+        dset_pp = s.zp_pp.sel(time=tslice).sum(dim="vz_dir")
+        dset = s.zprof.sel(time=tslice).sum(dim="vz_dir")
+    if s.options["cosmic_ray"]:
+        dset_pp["cr_heating"] = (
+            -dset_pp["Gamma_cr_stream"] * (s.u.energy_density / s.u.time).cgs.value
+        )
+        dset_pp["cr_work"] = (
+            dset_pp["CRwork_total"] * (s.u.energy_density / s.u.time).cgs.value
+        )
+        dset_pp["cr_loss"] = (
+            -dset_pp["CRLosses"] * (s.u.energy_density / s.u.time).cgs.value
+        )
+        if "0-heating_cr" in dset:
+            dset["cr_heating"] = (
+                -dset["0-heating_cr"] * (s.u.energy_density / s.u.time).cgs.value
+            )
+        if "0-work_cr" in dset:
+            dset["cr_work"] = (
+                dset["0-work_cr"] * (s.u.energy_density / s.u.time).cgs.value
+            )
+        tdec_scr = s.par["feedback"]["tdec_scr"] * s.u.Myr
+        dset["CRinj_rate"] = (dset["sCR"] / tdec_scr) * (
+            s.u.energy_density / s.u.time
+        ).cgs.value
+    for axs, ph in zip(axes.T, phases):
+        plt.sca(axs[0])
+        if isinstance(ph, list):
+            plt.title(f"ph={'+'.join(ph)}")
+        else:
+            plt.title(f"ph={ph}")
+        plot_zprof_frac(
+            dset_pp,
+            "cool_rate",
+            ph,
+            kpc=kpc,
+            color="C0",
+            label=r"$n_H^2 \Lambda$",
+        )
+        if s.options["cosmic_ray"]:
+            plot_zprof_frac(
+                dset_pp,
+                "cr_heating",
+                ph,
+                kpc=kpc,
+                color="C1",
+                label=r"$\mathcal{G}_{\rm cr, st}$",
+            )
+        plot_zprof_frac(
+            dset_pp, "heat_rate", ph, kpc=kpc, color="C2", label=r"$n_H \Gamma$"
+        )
+        if s.options["cosmic_ray"]:
+            plt.sca(axs[1])
+            plot_zprof_frac(
+                dset_pp,
+                "cr_loss",
+                ph,
+                kpc=kpc,
+                color="C0",
+                label=r"$\mathcal{L}_{\rm cr}$",
+            )
+            plot_zprof_frac(
+                dset,
+                "CRinj_rate",
+                ph,
+                kpc=kpc,
+                color="C1",
+                label=r"$e_{\rm cr}/t_{\rm dec}$",
+            )
+            plot_zprof_frac(
+                dset_pp,
+                "cr_work",
+                ph,
+                kpc=kpc,
+                color="C2",
+                label=r"$W_{\rm gas-cr}$",
+            )
 
     plt.sca(axes[0, 0])
     plt.ylabel("Energy Loss/Gain\n" + r"$[{\rm erg\,s^{-1}\,cm^{-3}}]$")
@@ -2038,7 +2033,7 @@ def plot_gainloss_z(
     plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label, xlim=(-4, 4))
 
     if savefig:
-        plt.savefig(osp.join(fig_outdir, f"{gr}_heatcool_z_{nph}ph.pdf"))
+        plt.savefig(osp.join(fig_outdir, f"{name}_heatcool_z_{nph}ph.pdf"))
     return fig
 
 
