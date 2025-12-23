@@ -33,7 +33,7 @@ cpp_to_cc = {
 
 class PDF:
     @LoadSim.Decorators.check_netcdf
-    def get_nPpdf(
+    def get_jointpdf(
         self,
         num,
         prefix,
@@ -44,6 +44,7 @@ class PDF:
         yf="pok",
         xlim=(-10, 10),
         ylim=(-10, 10),
+        wlist=[None, "nH"],
         Nx=256,
         Ny=256,
         logx=True,
@@ -63,7 +64,6 @@ class PDF:
         data = self.get_data(num, outid=outid, load_derived=True)
 
         dset = xr.Dataset()
-        wlist = [None, "nH"]
 
         data = data[[xf, yf] + wlist[1:]].load()
         for wf in wlist:
@@ -79,6 +79,14 @@ class PDF:
             dset[da.name] = da
             dset = dset.assign_coords(coord_dict)
         return dset.assign_coords(time=data.attrs["Time"])
+
+    def get_nPpdf(self, num):
+        dset = self.get_jointpdf(num, "pdf", filebase="nP")
+        return dset
+
+    def get_nTpdf(self, num):
+        dset = self.get_jointpdf(num, "pdf", filebase="nT", yf="T", ylim=(0, 10), Ny=128)
+        return dset
 
     @LoadSim.Decorators.check_netcdf
     def get_windpdf(

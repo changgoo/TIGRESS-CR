@@ -989,10 +989,8 @@ if __name__ == "__main__":
             parnum = int(num // (pardt / mydt))
             if v == spp._hdf5_outvar_def:
                 f = plot_snapshot(spp, num, parnum=parnum, savefig=True)
-                nPpdf = spp.get_nPpdf(num, "pdf", filebase="nP")
-                nTpdf = spp.get_nPpdf(
-                    num, "pdf", filebase="nT", yf="T", ylim=(0, 10), Ny=128
-                )
+                nPpdf = spp.get_nPpdf(num)
+                nTpdf = spp.get_nTpdf(num)
             elif v == "d,P,Ec":
                 f = plot_snapshot(
                     spp,
@@ -1003,8 +1001,8 @@ if __name__ == "__main__":
                     fields_xz=("Sigma", "nH", "T", "pok"),
                     savefig=True,
                 )
-                nPpdf = spp.get_nPpdf(num, f"pdf_outid{k}", filebase="nP", outid=k)
-                nTpdf = spp.get_nPpdf(
+                nPpdf = spp.get_jointpdf(num, f"pdf_outid{k}", filebase="nP", outid=k)
+                nTpdf = spp.get_jointpdf(
                     num,
                     f"pdf_outid{k}",
                     filebase="nT",
