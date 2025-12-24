@@ -16,6 +16,7 @@ from zprof import Zprof
 from slc_prj import SliceProj
 from pdf import PDF
 from postproc_zprof import PostProcessingZprof
+from fields import add_fields
 from pyathena.load_sim import LoadSim
 from pyathena.fields.fields import DerivedFields
 
@@ -223,6 +224,7 @@ class LoadSimTIGRESSPP(
 
     def update_derived_fields(self):
         dfi = DerivedFields(self.par)
+        add_fields(self,dfi)
         # dfi.dfi["T"]["imshow_args"]["cmap"] = "Spectral_r"
         # dfi.dfi["T"]["imshow_args"]["norm"] = LogNorm(vmin=1e2, vmax=1e8)
         dfi.dfi["nH"]["imshow_args"]["cmap"] = cmr.rainforest
@@ -283,64 +285,6 @@ class LoadSimTIGRESSPP(
         dfi.dfi["vmag"]["label_name"] = "$|v|$"
         self.dfi = dfi.dfi
 
-    def get_pdf(
-        self,
-        dchunk,
-        xf,
-        yf,
-        wf,
-        xlim,
-        ylim,
-        Nx=128,
-        Ny=128,
-        logx=False,
-        logy=False,
-        phase=None,
-    ):
-        try:
-            xdata = dchunk[xf]
-        except KeyError:
-            xdata = self.dfi(dchunk, self.u)
-        try:
-            ydata = dchunk[yf]
-        except KeyError:
-            ydata = self.dfi(dchunk, self.u)
-        if wf is not None:
-            try:
-                wdata = dchunk[wf]
-            except KeyError:
-                wdata = self.dfi(dchunk, self.u)
-            if phase is not None:
-                wdata = wdata * phase.data.flatten()
-            name = f"{wf}-pdf"
-        else:
-            name = "vol-pdf"
-
-        if logx:
-            xdata = np.log10(np.abs(xdata))
-            xf = f"log_{xf}"
-        if logy:
-            ydata = np.log10(np.abs(ydata))
-            yf = f"log_{yf}"
-
-        b1 = np.linspace(xlim[0], xlim[1], Nx)
-        b2 = np.linspace(ylim[0], ylim[1], Ny)
-        h, b1, b2 = np.histogram2d(
-            xdata.data.flatten(),
-            ydata.data.flatten(),
-            weights=wdata.data.flatten() if wf is not None else None,
-            bins=[b1, b2],
-        )
-        dx = b1[1] - b1[0]
-        dy = b2[1] - b2[0]
-        pdf = h.T / dx / dy
-        da = xr.DataArray(
-            pdf,
-            coords=[0.5 * (b2[1:] + b2[:-1]), 0.5 * (b1[1:] + b1[:-1])],
-            dims=[yf, xf],
-            name=name,
-        )
-        return da
 
     def check_configure_options(self):
         par = self.par

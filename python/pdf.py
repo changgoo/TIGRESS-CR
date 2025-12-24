@@ -32,6 +32,65 @@ cpp_to_cc = {
 
 
 class PDF:
+    def get_pdf(
+        self,
+        dchunk,
+        xf,
+        yf,
+        wf,
+        xlim,
+        ylim,
+        Nx=128,
+        Ny=128,
+        logx=False,
+        logy=False,
+        phase=None,
+    ):
+        try:
+            xdata = dchunk[xf]
+        except KeyError:
+            xdata = self.dfi(dchunk, self.u)
+        try:
+            ydata = dchunk[yf]
+        except KeyError:
+            ydata = self.dfi(dchunk, self.u)
+        if wf is not None:
+            try:
+                wdata = dchunk[wf]
+            except KeyError:
+                wdata = self.dfi(dchunk, self.u)
+            if phase is not None:
+                wdata = wdata * phase.data.flatten()
+            name = f"{wf}-pdf"
+        else:
+            name = "vol-pdf"
+
+        if logx:
+            xdata = np.log10(np.abs(xdata))
+            xf = f"log_{xf}"
+        if logy:
+            ydata = np.log10(np.abs(ydata))
+            yf = f"log_{yf}"
+
+        b1 = np.linspace(xlim[0], xlim[1], Nx)
+        b2 = np.linspace(ylim[0], ylim[1], Ny)
+        h, b1, b2 = np.histogram2d(
+            xdata.data.flatten(),
+            ydata.data.flatten(),
+            weights=wdata.data.flatten() if wf is not None else None,
+            bins=[b1, b2],
+        )
+        dx = b1[1] - b1[0]
+        dy = b2[1] - b2[0]
+        pdf = h.T / dx / dy
+        da = xr.DataArray(
+            pdf,
+            coords=[0.5 * (b2[1:] + b2[:-1]), 0.5 * (b1[1:] + b1[:-1])],
+            dims=[yf, xf],
+            name=name,
+        )
+        return da
+
     @LoadSim.Decorators.check_netcdf
     def get_jointpdf(
         self,
