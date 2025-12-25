@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # basic imports
+import sys
 import os.path as osp
 import numpy as np
 import matplotlib.pyplot as plt
@@ -210,6 +211,10 @@ def draw_figures(num="all"):
             fig = plot_slices_cr(sim, snapshot_nums["crmhd"][1], kpc=False)
             fig.savefig(osp.join(outdir, "snapshot_quiet.png"))
 
+
 if __name__ == "__main__":
     load()
-    draw_figures(num="all")
+    if len(sys.argv) > 1:
+        draw_figures(num=int(sys.argv[1]))
+    else:
+        draw_figures(num="all")

@@ -2061,9 +2061,13 @@ def plot_gainloss_z_each(
 
 
 def plot_gainloss_z(
-    simgroup, gr, phases=["wc", "hot"],
+    simgroup,
+    gr,
+    phases=["wc", "hot"],
     grav_work=False,
-    tslice=slice(150, 500), kpc=True, savefig=True
+    tslice=slice(150, 500),
+    kpc=True,
+    savefig=True,
 ):
     """Plot thermal energy loss/gain and CR energy loss/gain rates.
 
@@ -2096,14 +2100,15 @@ def plot_gainloss_z(
         sharey="row",
         constrained_layout=True,
     )
-    labels = dict(cool_rate=r"$\mathcal{L}$",
-                  heat_rate=r"$\mathcal{G}$",
-                  cr_heating=r"$\mathcal{G}_{\rm st}$",
-                  cr_loss=r"$\mathcal{L}_{\rm cr}$",
-                  CRinj_rate=r"$\dot{e}_{\rm cr,SN}$",
-                  cr_work=r"$W_{\rm gas-cr}$",
-                  grav_work=r"$W_{\rm grav}$",
-                  )
+    labels = dict(
+        cool_rate=r"$\mathcal{L}$",
+        heat_rate=r"$\mathcal{G}$",
+        cr_heating=r"$\mathcal{G}_{\rm st}$",
+        cr_loss=r"$\mathcal{L}_{\rm cr}$",
+        CRinj_rate=r"$\dot{e}_{\rm cr,SN}$",
+        cr_work=r"$W_{\rm gas-cr}$",
+        grav_work=r"$W_{\rm grav}$",
+    )
     for m, s in sims.items():
         color = model_color[m]
         name = model_name[m]
@@ -2135,34 +2140,39 @@ def plot_gainloss_z(
             dset["CRinj_rate"] = (dset["sCR"] / tdec_scr) * (
                 s.u.energy_density / s.u.time
             ).cgs.value
-        dset["grav_work"] = -(dset["Egflux1"] + dset["Egflux2"] + dset["Egflux3"])* (s.u.energy_density / s.u.time).cgs.value
+        dset["grav_work"] = (
+            -(dset["Egflux1"] + dset["Egflux2"] + dset["Egflux3"])
+            * (s.u.energy_density / s.u.time).cgs.value
+        )
         for axs, ph in zip(axes.T, phases):
             plt.sca(axs[0])
             if isinstance(ph, list):
                 plt.title(f"ph={'+'.join(ph)}")
             else:
                 plt.title(f"ph={ph}")
-            for f,c in zip(["cool_rate", "heat_rate", "cr_heating", "cr_work", "grav_work"],
-                           ["C0", "C1", "C2", "C3", "C4"]):
-                kwargs = dict(ls=":" if name == "mhd" else "-",
-                              label=labels[f])
+            for f, c in zip(
+                ["cool_rate", "heat_rate", "cr_heating", "cr_work", "grav_work"],
+                ["C0", "C1", "C2", "C3", "C4"],
+            ):
+                kwargs = dict(ls=":" if name == "mhd" else "-", label=labels[f])
                 if f == "grav_work":
                     if grav_work:
-                        plot_zprof_frac(dset,f,ph,kpc=kpc,color=c,**kwargs)
+                        plot_zprof_frac(dset, f, ph, kpc=kpc, color=c, **kwargs)
                 else:
-                    plot_zprof_frac(dset_pp,f,ph,kpc=kpc,color=c,**kwargs)
+                    plot_zprof_frac(dset_pp, f, ph, kpc=kpc, color=c, **kwargs)
 
             plt.sca(axs[1])
-            for f,c in zip(["cr_loss", "CRinj_rate", "cr_heating", "cr_work"],
-                           ["C0", "C1", "C2", "C3"]):
-                kwargs = dict(ls=":" if name == "mhd" else "-",
-                              label=labels[f])
+            for f, c in zip(
+                ["cr_loss", "CRinj_rate", "cr_heating", "cr_work"],
+                ["C0", "C1", "C2", "C3"],
+            ):
+                kwargs = dict(ls=":" if name == "mhd" else "-", label=labels[f])
                 if f == "CRinj_rate":
-                    plot_zprof_frac(dset,f,ph,kpc=kpc,color=c,**kwargs)
+                    plot_zprof_frac(dset, f, ph, kpc=kpc, color=c, **kwargs)
                 else:
-                    plot_zprof_frac(dset_pp,f,ph,kpc=kpc,color=c,**kwargs)
+                    plot_zprof_frac(dset_pp, f, ph, kpc=kpc, color=c, **kwargs)
 
-    nmhd = 3 if grav_work else 2 # number of mhd lines plotted
+    nmhd = 3 if grav_work else 2  # number of mhd lines plotted
     plt.sca(axes[0, 0])
     plt.ylabel("Loss/Gain for Gas\n" + r"$[{\rm erg\,s^{-1}\,cm^{-3}}]$")
     plt.yscale("log")
@@ -2177,16 +2187,16 @@ def plot_gainloss_z(
         title="model",
         title_fontsize="x-small",
         frameon=False,
-        loc=1
+        loc=1,
     )
 
     plt.sca(axes[0, 1])
     lines, labels = axes[0, 1].get_legend_handles_labels()
-    custom_lines = [lines[nmhd], lines[nmhd+3]]
-    custom_labels = [labels[nmhd], labels[nmhd+3]]
+    custom_lines = [lines[nmhd], lines[nmhd + 3]]
+    custom_labels = [labels[nmhd], labels[nmhd + 3]]
     if grav_work:
-        custom_lines.append(lines[nmhd+4])
-        custom_labels.append(labels[nmhd+4])
+        custom_lines.append(lines[nmhd + 4])
+        custom_labels.append(labels[nmhd + 4])
     plt.legend(
         custom_lines,
         custom_labels,
@@ -2194,13 +2204,13 @@ def plot_gainloss_z(
         title="gas loss",
         title_fontsize="x-small",
         frameon=False,
-        loc=1
+        loc=1,
     )
 
     plt.sca(axes[0, 2])
     lines, labels = axes[0, 2].get_legend_handles_labels()
-    custom_lines = [lines[nmhd+1], lines[nmhd+2]]
-    custom_labels = [labels[nmhd+1], labels[nmhd+2]]
+    custom_lines = [lines[nmhd + 1], lines[nmhd + 2]]
+    custom_labels = [labels[nmhd + 1], labels[nmhd + 2]]
     plt.legend(
         custom_lines,
         custom_labels,
@@ -2208,10 +2218,9 @@ def plot_gainloss_z(
         title="gas gain",
         title_fontsize="x-small",
         frameon=False,
-        loc=1
+        loc=1,
     )
     # plt.legend(fontsize="x-small")
-
 
     plt.sca(axes[1, 0])
     plt.ylabel("Loss/Gain for CRs\n" + r"$[{\rm erg\,s^{-1}\,cm^{-3}}]$")
@@ -2242,7 +2251,7 @@ def plot_gainloss_z(
         title="CR gain",
         title_fontsize="x-small",
         frameon=False,
-        loc=1
+        loc=1,
     )
 
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"

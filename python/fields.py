@@ -21,6 +21,7 @@ import cmasher as cmr
 
 from matplotlib.colors import Normalize, LogNorm
 
+
 def set_derived_fields_user(par):
     func = dict()
     field_dep = dict()
@@ -29,21 +30,24 @@ def set_derived_fields_user(par):
     vminmax = dict()
     take_log = dict()
 
-    gamma_cr = 4./3.
-    vmax = par["cr"]["vmax"] # in cm/s
+    gamma_cr = 4.0 / 3.0
+    vmax = par["cr"]["vmax"]  # in cm/s
 
     # cr advection + streaming
-    f = 'Vtotz'
-    field_dep[f] = set(["velocity","0-Vs3"])
+    f = "Vtotz"
+    field_dep[f] = set(["velocity", "0-Vs3"])
+
     def _Vtotz(d, u):
-        return (d["velocity3"]+d["0-Vs3"])*u.kms
+        return (d["velocity3"] + d["0-Vs3"]) * u.kms
+
     func[f] = _Vtotz
-    label[f] = r'$v_{\rm tot,z}\;[{\rm km\,s^{-1}}]$'
-    cmap[f] = 'bwr'
-    vminmax[f] = (-100.0,100.0)
+    label[f] = r"$v_{\rm tot,z}\;[{\rm km\,s^{-1}}]$"
+    cmap[f] = "bwr"
+    vminmax[f] = (-100.0, 100.0)
     take_log[f] = False
 
     return func, field_dep, label, cmap, vminmax, take_log
+
 
 def add_fields(self, dfi):
     par = self.par
@@ -56,20 +60,23 @@ def add_fields(self, dfi):
     for f in func:
         if take_log[f]:
             norm[f] = LogNorm(*vminmax[f])
-            scale[f] = 'log'
+            scale[f] = "log"
         else:
             norm[f] = Normalize(*vminmax[f])
-            scale[f] = 'linear'
-        imshow_args[f] = dict(norm=norm[f], cmap=cmap[f],
-                              cbar_kwargs=dict(label=label[f]))
+            scale[f] = "linear"
+        imshow_args[f] = dict(
+            norm=norm[f], cmap=cmap[f], cbar_kwargs=dict(label=label[f])
+        )
 
     for f in func:
-        dfi.dfi[f] = dict(field_dep=field_dep[f],
-                        func=func[f],
-                        label=label[f],
-                        norm=norm[f],
-                        vminmax=vminmax[f],
-                        cmap=cmap[f],
-                        scale=scale[f],
-                        take_log=take_log[f],
-                        imshow_args=imshow_args[f])
+        dfi.dfi[f] = dict(
+            field_dep=field_dep[f],
+            func=func[f],
+            label=label[f],
+            norm=norm[f],
+            vminmax=vminmax[f],
+            cmap=cmap[f],
+            scale=scale[f],
+            take_log=take_log[f],
+            imshow_args=imshow_args[f],
+        )

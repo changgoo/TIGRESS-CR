@@ -224,7 +224,7 @@ class LoadSimTIGRESSPP(
 
     def update_derived_fields(self):
         dfi = DerivedFields(self.par)
-        add_fields(self,dfi)
+        add_fields(self, dfi)
         # dfi.dfi["T"]["imshow_args"]["cmap"] = "Spectral_r"
         # dfi.dfi["T"]["imshow_args"]["norm"] = LogNorm(vmin=1e2, vmax=1e8)
         dfi.dfi["nH"]["imshow_args"]["cmap"] = cmr.rainforest
@@ -284,7 +284,6 @@ class LoadSimTIGRESSPP(
                 dfi.dfi[k]["label_unit"] = ""
         dfi.dfi["vmag"]["label_name"] = "$|v|$"
         self.dfi = dfi.dfi
-
 
     def check_configure_options(self):
         par = self.par

@@ -34,28 +34,28 @@ def load(verbose=True):
     model_dict = cr_data_load(basedir)
 
     # initialize simgroup
-    groups = ["vAi","vAtot","nost","σ28","σ29","crmhd"]
+    groups = ["vAi", "vAtot", "nost", "σ28", "σ29", "crmhd"]
     for gr in groups:
-        simgroup[gr]=dict()
+        simgroup[gr] = dict()
 
     # categorize models
     mlist = []
-    for k,d in model_dict.items():
+    for k, d in model_dict.items():
         sim = LoadSimTIGRESSPP(d, verbose=False)
         par = sim.par
         base_split = sim.basename.split("-")
         model = []
         if par["cr"]["self_consistent_flag"] == 0:
             sigma_exp = int(-np.log10(par["cr"]["sigma"]))
-            sigma=f'σ{sigma_exp}'
+            sigma = f"σ{sigma_exp}"
             model.append(sigma)
             if par["cr"]["valfven_flag"] == 1:
                 model.append("vAi")
             elif par["cr"]["valfven_flag"] == 0:
                 model.append("vAtot")
-            elif  par["cr"]["valfven_flag"] == -1:
+            elif par["cr"]["valfven_flag"] == -1:
                 model.append("nost")
-                if par["cr"]["vs_flag"]==1:
+                if par["cr"]["vs_flag"] == 1:
                     print("no streaming with invalud valfven_flag")
             if base_split[0] != "crmhd":
                 model.append(base_split[0].split("_")[1])
@@ -63,7 +63,7 @@ def load(verbose=True):
             model.append(base_split[0])
             if par["problem"]["beta0"] != 1:
                 model.append(f'b{par["problem"]["beta0"]}')
-            if par["cr"]["vmax"] != 2.e9:
+            if par["cr"]["vmax"] != 2.0e9:
                 model.append(f'Vmax{int(par["cr"]["vmax"]/1.e9)}')
         newkey = "-".join(model)
 
@@ -72,7 +72,7 @@ def load(verbose=True):
         else:
             for gr in groups:
                 if gr in newkey:
-                    simgroup[gr][newkey]=sim
+                    simgroup[gr][newkey] = sim
         mlist.append(newkey)
         model_name[newkey] = newkey
         if verbose:
@@ -81,7 +81,7 @@ def load(verbose=True):
     # load data/ assign colors
     for group in simgroup:
         load_group(simgroup, group)
-        for i,k in enumerate(simgroup[group]):
+        for i, k in enumerate(simgroup[group]):
             if k not in model_color:
                 model_color[k] = f"C{i}"
 

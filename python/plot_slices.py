@@ -961,7 +961,7 @@ if __name__ == "__main__":
             plt.close(f)
             f = plot_projections(spp, num)
             plt.close(f)
-            flist=[
+            flist = [
                 "nH",
                 "T",
                 "vz",
@@ -974,8 +974,7 @@ if __name__ == "__main__":
                 "pok",
                 "pok_mag",
             ]
-            f = plot_slices_cr(spp, num, flist=flist,
-                               time=True, savefig=True)
+            f = plot_slices_cr(spp, num, flist=flist, time=True, savefig=True)
             plt.close(f)
             head = "cr"
 
