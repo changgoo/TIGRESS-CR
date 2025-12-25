@@ -244,6 +244,22 @@ class PostProcessingZprof:
         ec = data["0-Ec"]
         return data[f"0-Fc{dir}"] * vlim / (4.0 / 3.0 * ec)
 
+    def CRweighted_velocity(self, data, dir=1):
+        """Ecr weighted velocity"""
+        # vmax in code units
+        vlim = self.par["cr"]["vmax"] / self.u.velocity.cgs.value
+
+        ec = data["0-Ec"]
+        return ec * data[f"vel{dir}"]
+
+    def CRweighted_vstream(self, data, dir=1):
+        """Ecr weighted velocity"""
+        # vmax in code units
+        vlim = self.par["cr"]["vmax"] / self.u.velocity.cgs.value
+
+        ec = data["0-Ec"]
+        return ec * data[f"0-Vs{dir}"]
+
     def GetAreaForPhaseAndVz(self, data, phase, nph=0, vz_dir=1):
         """Area of the face where vz_dir*Vz>0 and phase=nph
         nph=0: cold, 1: cool, 2: warm, 3: ionized, 4: hot
@@ -267,6 +283,10 @@ class PostProcessingZprof:
         results["0-Veff1"] = self.EffecitveCRvelocity(data, dir=1)
         results["0-Veff2"] = self.EffecitveCRvelocity(data, dir=2)
         results["0-Veff3"] = self.EffecitveCRvelocity(data, dir=3)
+        # CR energy weighted velocity
+        for dir_ in [1, 2, 3]:
+            results[f"0-Ec_vel{dir_}"] = self.CRweighted_velocity(data, dir=dir_)
+            results[f"0-Ec_vs{dir_}"] = self.CRweighted_vstream(data, dir=dir_)
 
         return results
 
