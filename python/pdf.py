@@ -108,6 +108,7 @@ class PDF:
         Ny=256,
         logx=True,
         logy=True,
+        zslice=None,
         outid=None,
         dryrun=False,
     ):
@@ -125,6 +126,8 @@ class PDF:
         dset = xr.Dataset()
 
         data = data[[xf, yf] + wlist[1:]].load()
+        if zslice is not None:
+            data = data.sel(z=zslice)
         for wf in wlist:
             if wf is None:
                 total = np.prod(self.domain["Nx"])
@@ -144,7 +147,9 @@ class PDF:
         return dset
 
     def get_nTpdf(self, num):
-        dset = self.get_jointpdf(num, "pdf", filebase="nT", yf="T", ylim=(0, 10), Ny=128)
+        dset = self.get_jointpdf(
+            num, "pdf", filebase="nT", yf="T", ylim=(0, 10), Ny=128
+        )
         return dset
 
     @LoadSim.Decorators.check_netcdf
