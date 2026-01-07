@@ -1581,9 +1581,13 @@ def plot_area_mass_fraction_z(
                     dset, field, ph, kpc=kpc, line="mean", color=color, label=label
                 )
                 if field == "area":
+                    if "whole" in dset_out["area"].phase
+                        totarea = dset_out["area"].sel(phase="whole")
+                    else:
+                        totarea = dset_out["area"].sum(dim="phase")
                     fA_out = (
                         dset_out[field].sel(phase=np.atleast_1d(ph)).sum(dim="phase")
-                        / dset_out["area"].sel(phase="whole")
+                        / totarea
                     ).mean(dim="time")
                     z = fA_out.z / 1.0e3 if kpc else fA_out.z
                     plt.plot(z, fA_out, color=color, ls="--", label="outflow")
@@ -2326,7 +2330,7 @@ def plot_mass_fraction_t(simgroup, gr, zslice=slice(-50, 50), savefig=True):
 
         dset = s.zprof.sum(dim="vz_dir").sel(z=zslice)
         plt.sca(axes[i])
-        total_mass = dset["rho"].sel(phase="whole").sum(dim="z")
+        total_mass = dset["rho"].sum(dim="phase").sum(dim="z")
         for ph, color, label in zip(
             [["CNM", "UNM"], "WNM", "WHIM", "HIM"],
             ["tab:blue", "tab:olive", "tab:red"],
