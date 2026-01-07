@@ -1699,16 +1699,16 @@ def plot_velocity_z(
     for i, m in enumerate(models):
         s = sims[m]
         c = model_color[m]
-        if s.options["cosmic_ray"]:
+        dnet = s.zp_ph.sel(time=tslice, z=slice(0, s.zp_ph.z.max())).sum(dim="vz_dir")
+        dout = s.zp_ph.sel(time=tslice, z=slice(0, s.zp_ph.z.max()), vz_dir=1)
+
+        if s.options["cosmic_ray"] and ("0-Veff3" not in dnet):
             crzp_net = s.zp_pp_ph.sel(time=tslice, z=slice(0, s.zp_ph.z.max())).sum(
                 dim="vz_dir"
             )
             crzp_out = s.zp_pp_ph.sel(
                 time=tslice, z=slice(0, s.zp_ph.z.max()), vz_dir=1
             )
-        dnet = s.zp_ph.sel(time=tslice, z=slice(0, s.zp_ph.z.max())).sum(dim="vz_dir")
-        dout = s.zp_ph.sel(time=tslice, z=slice(0, s.zp_ph.z.max()), vz_dir=1)
-
         plt.sca(axs[0])
         plot_zprof_field(
             dout, "vel3", ph, kpc=kpc, color=c, line="median", label=model_name[m]
@@ -1764,21 +1764,40 @@ def plot_velocity_z(
 
         plt.sca(axs[3])
         if s.options["cosmic_ray"]:
-            plot_zprof_field(
-                crzp_out, "0-Veff3", ph, kpc=kpc, color=c, line="median", label="out"
-            )
-            plot_zprof_field(
-                crzp_net,
-                "0-Veff3",
-                ph,
-                kpc=kpc,
-                color=c,
-                line="median",
-                quantile=False,
-                lw=1,
-                ls=":",
-                label="net",
-            )
+            if "0-Veff3" in dout:
+                plot_zprof_field(
+                    dout, "0-Veff3", ph, kpc=kpc, color=c, line="median", label="out"
+                )
+            else:
+                plot_zprof_field(
+                    crzp_out, "0-Veff3", ph, kpc=kpc, color=c, line="median", label="out"
+                )
+            if "0-Veff3" in dnet:
+                plot_zprof_field(
+                    dnet,
+                    "0-Veff3",
+                    ph,
+                    kpc=kpc,
+                    color=c,
+                    line="median",
+                    quantile=False,
+                    lw=1,
+                    ls=":",
+                    label="net",
+                )
+            else:
+                plot_zprof_field(
+                    crzp_net,
+                    "0-Veff3",
+                    ph,
+                    kpc=kpc,
+                    color=c,
+                    line="median",
+                    quantile=False,
+                    lw=1,
+                    ls=":",
+                    label="net",
+                )
 
     plt.sca(axs[0])
     plt.ylabel(r"$\overline{v}_z\,[{\rm km/s}]$")
