@@ -1581,7 +1581,7 @@ def plot_area_mass_fraction_z(
                     dset, field, ph, kpc=kpc, line="mean", color=color, label=label
                 )
                 if field == "area":
-                    if "whole" in dset_out["area"].phase
+                    if "whole" in dset_out["area"].phase:
                         totarea = dset_out["area"].sel(phase="whole")
                     else:
                         totarea = dset_out["area"].sum(dim="phase")
@@ -1864,24 +1864,37 @@ def plot_kappa_z(
     for m, s in sims.items():
         color = model_color[m]
         if s.options["cosmic_ray"]:
-            if phases[0] == "wc" and phases[1] == "hot":
-                dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
+            if "0-Fd_B" not in s.zprof:
+                # use post-processing zprof
+                if phases[0] == "wc" and phases[1] == "hot":
+                    dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
+                else:
+                    dset_pp = s.zp_pp.sel(time=tslice).sum(dim="vz_dir")
+                dset_pp["kappa_eff"] = (
+                    dset_pp["Fcr_diff_parallel"]
+                    / dset_pp["GradPcr_parallel"]
+                    * dset_pp["area"]
+                ) * (s.u.cm**2 / s.u.s)
+                dset_pp["sigma_eff"] = (
+                    dset_pp["GradPcr_parallel"]
+                    / dset_pp["Fcr_diff_parallel"]
+                    * dset_pp["area"]
+                ) / (s.u.cm**2 / s.u.s)
             else:
-                dset_pp = s.zp_pp.sel(time=tslice).sum(dim="vz_dir")
-            dset = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
-            vmax_kms = s.par["cr"]["vmax"] / 1.0e5
-            dset_pp["kappa_eff"] = (
-                dset_pp["Fcr_diff_parallel"]
-                / dset_pp["GradPcr_parallel"]
-                * dset_pp["area"]
-            ) * (s.u.cm**2 / s.u.s)
-            dset_pp["sigma_eff"] = (
-                dset_pp["GradPcr_parallel"]
-                / dset_pp["Fcr_diff_parallel"]
-                * dset_pp["area"]
-            ) / (s.u.cm**2 / s.u.s)
-            dset["sigma"] = dset["0-Sigma_diff1"] / vmax_kms / s.u.cm**2 * s.u.s
-            dset["kappa"] = dset["0-kappac"] * (s.u.cm**2 / s.u.s)
+                if phases[0] == "wc" and phases[1] == "hot":
+                    dset_pp = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
+                else:
+                    dset_pp = s.zprof.sel(time=tslice).sum(dim="vz_dir")
+                dset_pp["kappa_eff"] = (
+                    dset_pp["0-Fd_B"]
+                    / dset_pp["0-GradPc_B"]
+                    * dset_pp["area"]
+                ) * (s.u.cm**2 / s.u.s)
+                dset_pp["sigma_eff"] = (
+                    dset_pp["0-GradPc_B"]
+                    / dset_pp["0-Fd_B"]
+                    * dset_pp["area"]
+                ) / (s.u.cm**2 / s.u.s)
             for axs, ph in zip(axes.T, phases):
                 plt.sca(axs[0])
                 if isinstance(ph, list):
@@ -2112,22 +2125,28 @@ def plot_gainloss_z(
     for m, s in sims.items():
         color = model_color[m]
         name = model_name[m]
+        is_zp_pp = hasattr(s,"zp_pp")
         if phases[0] == "wc" and phases[1] == "hot":
-            dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
+            if is_zp_pp:
+                dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
             dset = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
         else:
-            dset_pp = s.zp_pp.sel(time=tslice).sum(dim="vz_dir")
+            if is_zp_pp:
+                dset_pp = s.zp_pp.sel(time=tslice).sum(dim="vz_dir")
             dset = s.zprof.sel(time=tslice).sum(dim="vz_dir")
+        if not is_zp_pp:
+            dset_pp = dset
         if s.options["cosmic_ray"]:
-            dset_pp["cr_heating"] = (
-                -dset_pp["Gamma_cr_stream"] * (s.u.energy_density / s.u.time).cgs.value
-            )
-            dset_pp["cr_work"] = (
-                dset_pp["CRwork_total"] * (s.u.energy_density / s.u.time).cgs.value
-            )
-            dset_pp["cr_loss"] = (
-                -dset_pp["CRLosses"] * (s.u.energy_density / s.u.time).cgs.value
-            )
+            if is_zp_pp:
+                dset_pp["cr_heating"] = (
+                    -dset_pp["Gamma_cr_stream"] * (s.u.energy_density / s.u.time).cgs.value
+                )
+                dset_pp["cr_work"] = (
+                    dset_pp["CRwork_total"] * (s.u.energy_density / s.u.time).cgs.value
+                )
+                dset_pp["cr_loss"] = (
+                    -dset_pp["CRLosses"] * (s.u.energy_density / s.u.time).cgs.value
+                )
             if "0-heating_cr" in dset:
                 dset["cr_heating"] = (
                     -dset["0-heating_cr"] * (s.u.energy_density / s.u.time).cgs.value
@@ -2135,6 +2154,10 @@ def plot_gainloss_z(
             if "0-work_cr" in dset:
                 dset["cr_work"] = (
                     dset["0-work_cr"] * (s.u.energy_density / s.u.time).cgs.value
+                )
+            if "0-cooling_cr" in dset:
+                dset["cr_loss"] = (
+                    dset["0-cooling_cr"] * (s.u.energy_density / s.u.time).cgs.value
                 )
             tdec_scr = s.par["feedback"]["tdec_scr"] * s.u.Myr
             dset["CRinj_rate"] = (dset["sCR"] / tdec_scr) * (
