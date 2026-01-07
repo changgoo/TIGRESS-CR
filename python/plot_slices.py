@@ -990,6 +990,11 @@ if __name__ == "__main__":
                 f = plot_snapshot(spp, num, parnum=parnum, savefig=True)
                 nPpdf = spp.get_nPpdf(num)
                 nTpdf = spp.get_nTpdf(num)
+                pdf = spp.get_windpdf(num, "windpdf")
+                zprof = spp.load_zprof_postproc_one(num)
+                # PDFs for CRMHD simulations
+                if spp.options["cosmic_ray"]:
+                    spp.get_crpdf(num)
             elif v == "d,P,Ec":
                 f = plot_snapshot(
                     spp,

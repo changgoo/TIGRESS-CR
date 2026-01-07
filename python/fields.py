@@ -46,6 +46,35 @@ def set_derived_fields_user(par):
     vminmax[f] = (-100.0, 100.0)
     take_log[f] = False
 
+    # veff
+    f = "0-Veff3"
+    field_dep[f] = set(['0-Ec','0-Fc3'])
+
+    def _Veffz(d, u):
+        vmax_ = vmax/(u.cm/u.s)
+        return d["0-Fc3"]*vmax_/(gamma_cr*d['0-Ec'])*u.kms
+
+    func[f] = _Veffz
+    label[f] = r"$v_{\rm eff,z}\;[{\rm km\,s^{-1}}]$"
+    cmap[f] = "bwr"
+    vminmax[f] = (-100.0, 100.0)
+    take_log[f] = False
+
+    # kappa_para
+    f = "kappa_para"
+    field_dep[f] = set(['0-Sigma_diff1'])
+
+    def _kappa_para(d, u):
+        vmax_ = vmax/(u.cm/u.s)
+        kappa = vmax_/d["0-Sigma_diff1"]
+        return kappa * (u.cm**2 / u.s)
+
+    func[f] = _kappa_para
+    label[f] = r"$\kappa_{\parallel}\;[{\rm cm^{2}\,s^{-1}}]$"
+    cmap[f] = "viridis"
+    vminmax[f] = [1.e27,1.e30]
+    take_log[f] = True
+
     return func, field_dep, label, cmap, vminmax, take_log
 
 

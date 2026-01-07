@@ -152,6 +152,40 @@ class PDF:
         )
         return dset
 
+    def get_crpdf(self, num, force_override=False):
+        xf = "T"
+        for yf in ["velocity3", "0-Vs3", "0-Vd3", "0-Veff3", "Vtotz"]:
+            pdf = self.get_jointpdf(num, "pdf", filebase="-".join([xf,yf]),
+                                    xf=xf, yf=yf,
+                                    wlist=[None, "nH", "pok_cr"],
+                                    xlim=(1,9), ylim=(-1,4),
+                                    force_override=force_override)
+        for yf in ["kappa_para"]:
+            pdf = self.get_jointpdf(num, "pdf", filebase="-".join([xf,yf]),
+                                    xf=xf, yf=yf,
+                                    wlist=[None, "nH", "pok_cr"],
+                                    xlim=(1,9), ylim=(25,35),
+                                    force_override=force_override)
+        for yf in ["sigma_para"]:
+            pdf = self.get_jointpdf(num, "pdf", filebase="-".join([xf,yf]),
+                                    xf=xf, yf=yf,
+                                    wlist=[None, "nH", "pok_cr"],
+                                    xlim=(1,9), ylim=(-35,-25),
+                                    force_override=force_override)
+        xf = "nH"
+        for yf in ["kappa_para"]:
+            pdf = self.get_jointpdf(num, "pdf", filebase="-".join([xf,yf]),
+                                    xf=xf, yf=yf,
+                                    wlist=[None, "nH", "pok_cr"],
+                                    xlim=(-6,4), ylim=(25,35),
+                                    force_override=force_override)
+        for yf in ["sigma_para"]:
+            pdf = self.get_jointpdf(num, "pdf", filebase="-".join([xf,yf]),
+                                    xf=xf, yf=yf,
+                                    wlist=[None, "nH", "pok_cr"],
+                                    xlim=(-6,4), ylim=(-35,-25),
+                                    force_override=force_override)
+
     @LoadSim.Decorators.check_netcdf
     def get_windpdf(
         self,

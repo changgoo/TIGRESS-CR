@@ -1970,23 +1970,31 @@ def plot_gainloss_z_each(
 
     color = model_color[m]
     name = model_name[m]
+    is_zp_pp = hasattr(s,"zp_pp")
 
     if phases[0] == "wc" and phases[1] == "hot":
-        dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
+        if is_zp_pp:
+            dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
         dset = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
     else:
-        dset_pp = s.zp_pp.sel(time=tslice).sum(dim="vz_dir")
+        if is_zp_pp:
+            dset_pp = s.zp_pp.sel(time=tslice).sum(dim="vz_dir")
         dset = s.zprof.sel(time=tslice).sum(dim="vz_dir")
     if s.options["cosmic_ray"]:
-        dset_pp["cr_heating"] = (
-            -dset_pp["Gamma_cr_stream"] * (s.u.energy_density / s.u.time).cgs.value
-        )
-        dset_pp["cr_work"] = (
-            dset_pp["CRwork_total"] * (s.u.energy_density / s.u.time).cgs.value
-        )
-        dset_pp["cr_loss"] = (
-            -dset_pp["CRLosses"] * (s.u.energy_density / s.u.time).cgs.value
-        )
+        if is_zp_pp:
+            dset_pp["cr_heating"] = (
+                -dset_pp["Gamma_cr_stream"] * (s.u.energy_density / s.u.time).cgs.value
+            )
+            dset_pp["cr_work"] = (
+                dset_pp["CRwork_total"] * (s.u.energy_density / s.u.time).cgs.value
+            )
+            dset_pp["cr_loss"] = (
+                -dset_pp["CRLosses"] * (s.u.energy_density / s.u.time).cgs.value
+            )
+        if "0-cooling_cr" in dset:
+            dset["cr_loss"] = (
+                -dset["0-cooling_cr"] * (s.u.energy_density / s.u.time).cgs.value
+            )
         if "0-heating_cr" in dset:
             dset["cr_heating"] = (
                 -dset["0-heating_cr"] * (s.u.energy_density / s.u.time).cgs.value
@@ -1999,6 +2007,8 @@ def plot_gainloss_z_each(
         dset["CRinj_rate"] = (dset["sCR"] / tdec_scr) * (
             s.u.energy_density / s.u.time
         ).cgs.value
+    if not is_zp_pp:
+        dset_pp = dset
     for axs, ph in zip(axes.T, phases):
         plt.sca(axs[0])
         if isinstance(ph, list):
