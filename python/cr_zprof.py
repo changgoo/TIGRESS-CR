@@ -327,7 +327,7 @@ def load_group(sim_group, group="default"):
             dim="phase",
         )
         if not hasattr(s, "hst"):
-            s.hst = s.read_hst()
+            s.hst = s.make_monotonic(s.read_hst())
 
 
 def load_windpdf(s, tslice=slice(150, 500), both=True):
