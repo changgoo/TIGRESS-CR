@@ -1774,7 +1774,13 @@ def plot_velocity_z(
                 )
             else:
                 plot_zprof_field(
-                    crzp_out, "0-Veff3", ph, kpc=kpc, color=c, line="median", label="out"
+                    crzp_out,
+                    "0-Veff3",
+                    ph,
+                    kpc=kpc,
+                    color=c,
+                    line="median",
+                    label="out",
                 )
             if "0-Veff3" in dnet:
                 plot_zprof_field(
@@ -1886,14 +1892,10 @@ def plot_kappa_z(
                 else:
                     dset_pp = s.zprof.sel(time=tslice).sum(dim="vz_dir")
                 dset_pp["kappa_eff"] = (
-                    dset_pp["0-Fd_B"]
-                    / dset_pp["0-GradPc_B"]
-                    * dset_pp["area"]
+                    dset_pp["0-Fd_B"] / dset_pp["0-GradPc_B"] * dset_pp["area"]
                 ) * (s.u.cm**2 / s.u.s)
                 dset_pp["sigma_eff"] = (
-                    dset_pp["0-GradPc_B"]
-                    / dset_pp["0-Fd_B"]
-                    * dset_pp["area"]
+                    dset_pp["0-GradPc_B"] / dset_pp["0-Fd_B"] * dset_pp["area"]
                 ) / (s.u.cm**2 / s.u.s)
             for axs, ph in zip(axes.T, phases):
                 plt.sca(axs[0])
@@ -1970,7 +1972,7 @@ def plot_gainloss_z_each(
 
     color = model_color[m]
     name = model_name[m]
-    is_zp_pp = hasattr(s,"zp_pp")
+    is_zp_pp = hasattr(s, "zp_pp")
 
     if phases[0] == "wc" and phases[1] == "hot":
         if is_zp_pp:
@@ -2135,7 +2137,7 @@ def plot_gainloss_z(
     for m, s in sims.items():
         color = model_color[m]
         name = model_name[m]
-        is_zp_pp = hasattr(s,"zp_pp")
+        is_zp_pp = hasattr(s, "zp_pp")
         if phases[0] == "wc" and phases[1] == "hot":
             if is_zp_pp:
                 dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
@@ -2149,7 +2151,8 @@ def plot_gainloss_z(
         if s.options["cosmic_ray"]:
             if is_zp_pp:
                 dset_pp["cr_heating"] = (
-                    -dset_pp["Gamma_cr_stream"] * (s.u.energy_density / s.u.time).cgs.value
+                    -dset_pp["Gamma_cr_stream"]
+                    * (s.u.energy_density / s.u.time).cgs.value
                 )
                 dset_pp["cr_work"] = (
                     dset_pp["CRwork_total"] * (s.u.energy_density / s.u.time).cgs.value

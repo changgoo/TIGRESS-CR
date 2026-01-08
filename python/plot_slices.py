@@ -4,6 +4,7 @@ import os
 import os.path as osp
 import matplotlib.pyplot as plt
 import numpy as np
+import gc
 
 from load_sim_tigresspp import LoadSimTIGRESSPP
 from pyathena.plt_tools.make_movie import make_movie
@@ -977,6 +978,7 @@ if __name__ == "__main__":
             f = plot_slices_cr(spp, num, flist=flist, time=True, savefig=True)
             plt.close(f)
             head = "cr"
+        gc.collect()
 
     for k, v in zip(spp.hdf5_outid, spp.hdf5_outvar):
         nums = spp.nums_hdf5[v]
@@ -985,6 +987,7 @@ if __name__ == "__main__":
 
         mynums = [nums[i] for i in range(len(nums)) if i % COMM.size == COMM.rank]
         for num in mynums:
+            gc.collect()
             parnum = int(num // (pardt / mydt))
             if v == spp._hdf5_outvar_def:
                 f = plot_snapshot(spp, num, parnum=parnum, savefig=True)

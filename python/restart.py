@@ -139,8 +139,7 @@ class AthenaRestartReader:
             data_size["scalar"] = (self.NSCALARS, Ncells3, Ncells2, Ncells1)
         self.data_size = data_size
         self.mesh = mesh
-        self.meshblock= meshblock
-
+        self.meshblock = meshblock
 
     def read_user_mesh_data(self, n_int_elements=[], n_real_elements=[]):
         """
@@ -352,19 +351,11 @@ class AthenaRestartReader:
         self.data = dict()
         self.data["cons"] = np.zeros(self.data_size["cons"], dtype=self.real_type)
         if self.NFIELD > 0:
-            self.data["b1f"] = np.zeros(
-                self.data_size["b1f"], dtype=self.real_type
-            )
-            self.data["b2f"] = np.zeros(
-                self.data_size["b2f"], dtype=self.real_type
-            )
-            self.data["b3f"] = np.zeros(
-                self.data_size["b3f"], dtype=self.real_type
-            )
+            self.data["b1f"] = np.zeros(self.data_size["b1f"], dtype=self.real_type)
+            self.data["b2f"] = np.zeros(self.data_size["b2f"], dtype=self.real_type)
+            self.data["b3f"] = np.zeros(self.data_size["b3f"], dtype=self.real_type)
         if self.NCR > 0:
-            self.data["cr"] = np.zeros(
-                self.data_size["cr"], dtype=self.real_type
-            )
+            self.data["cr"] = np.zeros(self.data_size["cr"], dtype=self.real_type)
         if self.NSCALARS > 0:
             self.data["scalar"] = np.zeros(
                 self.data_size["scalar"], dtype=self.real_type
@@ -373,48 +364,60 @@ class AthenaRestartReader:
     def fill_global_array(self, block_idx):
         blk = self.blocks[block_idx]
         mb = self.meshblock
-        if not hasattr(self,"data"):
+        if not hasattr(self, "data"):
             self.set_global_array()
 
-        nmb1=int(self.mesh["nx1"]/self.meshblock["nx1"])
-        nmb2=int(self.mesh["nx2"]/self.meshblock["nx2"])
-        nmb3=int(self.mesh["nx3"]/self.meshblock["nx3"])
+        nmb1 = int(self.mesh["nx1"] / self.meshblock["nx1"])
+        nmb2 = int(self.mesh["nx2"] / self.meshblock["nx2"])
+        nmb3 = int(self.mesh["nx3"] / self.meshblock["nx3"])
 
         left = blk["lx1"] == 0
-        right = blk["lx1"] == (nmb1-1)
+        right = blk["lx1"] == (nmb1 - 1)
         bottom = blk["lx2"] == 0
-        top = blk["lx2"] == (nmb2-1)
+        top = blk["lx2"] == (nmb2 - 1)
         front = blk["lx3"] == 0
-        back = blk["lx3"] == (nmb3-1)
+        back = blk["lx3"] == (nmb3 - 1)
 
         # local indices of active cells
         lis = 0 if left else self.NGHOST
-        lie = mb["nx1"] + 2*self.NGHOST
+        lie = mb["nx1"] + 2 * self.NGHOST
         lie -= 0 if right else self.NGHOST
         ljs = 0 if bottom else self.NGHOST
-        lje = mb["nx2"] + 2*self.NGHOST
+        lje = mb["nx2"] + 2 * self.NGHOST
         lje -= 0 if top else self.NGHOST
         lks = 0 if front else self.NGHOST
-        lke = mb["nx3"] + 2*self.NGHOST
+        lke = mb["nx3"] + 2 * self.NGHOST
         lke -= 0 if back else self.NGHOST
 
         # corresponding global indices of active cells
-        gis = blk["lx1"]*mb["nx1"]+lis
-        gie = blk["lx1"]*mb["nx1"]+lie
-        gjs = blk["lx2"]*mb["nx2"]+ljs
-        gje = blk["lx2"]*mb["nx2"]+lje
-        gks = blk["lx3"]*mb["nx3"]+lks
-        gke = blk["lx3"]*mb["nx3"]+lke
+        gis = blk["lx1"] * mb["nx1"] + lis
+        gie = blk["lx1"] * mb["nx1"] + lie
+        gjs = blk["lx2"] * mb["nx2"] + ljs
+        gje = blk["lx2"] * mb["nx2"] + lje
+        gks = blk["lx3"] * mb["nx3"] + lks
+        gke = blk["lx3"] * mb["nx3"] + lke
 
-        self.data["cons"][:,gks:gke,gjs:gje,gis:gie]=blk["cons"][:,lks:lke,ljs:lje,lis:lie]
+        self.data["cons"][:, gks:gke, gjs:gje, gis:gie] = blk["cons"][
+            :, lks:lke, ljs:lje, lis:lie
+        ]
         if self.NFIELD > 0:
-            self.data["b1f"][gks:gke,gjs:gje,gis:gie+1]=blk["field"]["b1f"][lks:lke,ljs:lje,lis:lie+1]
-            self.data["b2f"][gks:gke,gjs:gje+1,gis:gie]=blk["field"]["b2f"][lks:lke,ljs:lje+1,lis:lie]
-            self.data["b3f"][gks:gke+1,gjs:gje,gis:gie]=blk["field"]["b3f"][lks:lke+1,ljs:lje,lis:lie]
+            self.data["b1f"][gks:gke, gjs:gje, gis : gie + 1] = blk["field"]["b1f"][
+                lks:lke, ljs:lje, lis : lie + 1
+            ]
+            self.data["b2f"][gks:gke, gjs : gje + 1, gis:gie] = blk["field"]["b2f"][
+                lks:lke, ljs : lje + 1, lis:lie
+            ]
+            self.data["b3f"][gks : gke + 1, gjs:gje, gis:gie] = blk["field"]["b3f"][
+                lks : lke + 1, ljs:lje, lis:lie
+            ]
         if self.NCR > 0:
-            self.data["cr"][:, :,gks:gke,gjs:gje,gis:gie]=blk["cr"][:,:,lks:lke,ljs:lje,lis:lie]
+            self.data["cr"][:, :, gks:gke, gjs:gje, gis:gie] = blk["cr"][
+                :, :, lks:lke, ljs:lje, lis:lie
+            ]
         if self.NSCALARS > 0:
-            self.data["scalar"][:,gks:gke,gjs:gje,gis:gie]=blk["scalar"][:,lks:lke,ljs:lje,lis:lie]
+            self.data["scalar"][:, gks:gke, gjs:gje, gis:gie] = blk["scalar"][
+                :, lks:lke, ljs:lje, lis:lie
+            ]
 
     def merge_particle(self):
         """Step 4b: Merge particle data from all blocks."""
@@ -427,11 +430,11 @@ class AthenaRestartReader:
         if all_particles_int:
             self.particle_int = np.hstack(all_particles_int)
         else:
-            self.particle_int = np.array([], dtype=self.int_type).reshape(0,0)
+            self.particle_int = np.array([], dtype=self.int_type).reshape(0, 0)
         if all_particles_real:
-            self.particle_real =  np.hstack(all_particles_real)
+            self.particle_real = np.hstack(all_particles_real)
         else:
-            self.particle_real = np.array([], dtype=self.real_type).reshape(0,0)
+            self.particle_real = np.array([], dtype=self.real_type).reshape(0, 0)
 
     def read_data(self):
         """Step 4: Read all block data and fill global arrays."""
@@ -439,6 +442,7 @@ class AthenaRestartReader:
             self.read_block_data(i)
             self.fill_global_array(i)
         self.merge_particle()
+
 
 # Example usage:
 # reader = AthenaRestartReader("my_file.rst")

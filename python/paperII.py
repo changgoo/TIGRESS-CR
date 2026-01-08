@@ -62,9 +62,9 @@ def load(verbose=True):
         else:
             model.append(base_split[0])
             if par["problem"]["beta0"] != 1:
-                model.append(f'b{par["problem"]["beta0"]}')
+                model.append(f"b{par['problem']['beta0']}")
             if par["cr"]["vmax"] != 2.0e9:
-                model.append(f'Vmax{int(par["cr"]["vmax"]/1.e9)}')
+                model.append(f"Vmax{int(par['cr']['vmax'] / 1.0e9)}")
         newkey = "-".join(model)
 
         if newkey in mlist:
