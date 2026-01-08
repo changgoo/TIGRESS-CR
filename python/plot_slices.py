@@ -941,11 +941,11 @@ def plot_slices_cr(
 
 
 if __name__ == "__main__":
-    spp = LoadSimTIGRESSPP(sys.argv[1])
+    COMM = MPI.COMM_WORLD
+    spp = LoadSimTIGRESSPP(sys.argv[1],verbose=COMM.rank == 0)
     spp.update_derived_fields()
     spp.dt = [spp.par[f"output{i + 1}"]["dt"] for i, v in enumerate(spp.out_fmt)]
 
-    COMM = MPI.COMM_WORLD
     mynums = [spp.nums[i] for i in range(len(spp.nums)) if i % COMM.size == COMM.rank]
     print(COMM.rank, mynums)
 
@@ -994,7 +994,8 @@ if __name__ == "__main__":
                 nPpdf = spp.get_nPpdf(num)
                 nTpdf = spp.get_nTpdf(num)
                 pdf = spp.get_windpdf(num, "windpdf")
-                zprof = spp.load_zprof_postproc_one(num)
+                # this operation is memory intensive
+                # zprof = spp.load_zprof_postproc_one(num)
                 # PDFs for CRMHD simulations
                 if spp.options["cosmic_ray"]:
                     spp.get_crpdf(num)
