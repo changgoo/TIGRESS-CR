@@ -2982,3 +2982,48 @@ def plot_voutpdf(simgroup, gr, kpc=True, savefig=True):
         plt.savefig(osp.join(fig_outdir, f"{gr}_voutpdf.pdf"))
 
     return fig
+
+def plot_velocity_pdfs(sim, m, wf = "pok_cr", tslice=slice(150,500), savefig=True):
+    name = model_name[m]
+    vel_pdfs = sim.vel_pdfs
+    vel_fields = list(vel_pdfs.keys())
+    fig,axes = plt.subplots(2,3,figsize=(8,6),
+                            sharey=True,sharex=True,constrained_layout=True,)
+
+    labels={"velocity3":r"$v_z$",
+            "0-Vs3":r"$v_{{\rm s},z}$",
+            "0-Vd3":r"$v_{{\rm d},z}$",
+            "0-Veff3":r"$v_{{\rm eff},z}$",
+            "Vtotz":r"$v_{{\rm dyn},z}\equiv v_z+v_{{\rm s},z}$",}
+
+    for vf,ax in zip(vel_fields,axes.flat):
+        pdf = vel_pdfs[vf].sel(time=tslice).mean(dim="time")
+        pok_cr_mean = vel_pdfs[vf][wf].sel(time=tslice).mean(dim="time")
+        plt.sca(ax)
+        plt.pcolormesh(pdf["log_T"],pdf[f"log_{vf}"],pdf[f"{wf}-pdf"]/pok_cr_mean,
+                       norm=LogNorm(1.e-5,1),cmap=cmr.fall_r)
+    plt.sca(axes[-1,-1])
+    for vf,ax in zip(vel_fields,axes.flat):
+        pdf = vel_pdfs[vf].sel(time=tslice).mean(dim="time")
+        vf_ = f"log_{vf}"
+        # get mean in linear space
+        vz = (pdf[f"{wf}-pdf"]*10.**pdf[vf_]).sum(dim=vf_)/(pdf[f"{wf}-pdf"]).sum(dim=vf_)
+        vz = np.log10(vz)
+        label=labels[vf]
+        plt.sca(axes[-1,-1])
+        l,=plt.plot(vz["log_T"],vz,label=label)
+        plt.sca(ax)
+        plt.plot(vz["log_T"],vz,color=l.get_color())
+        plt.annotate(label,(0.05,0.95),xycoords="axes fraction",ha="left",va="top")
+        # # get mean in log space
+        # vz=(pdf[f"{wf}-pdf"]*pdf[vf_]).sum(dim=vf_)/(pdf[f"{wf}-pdf"]).sum(dim=vf_)
+        # plt.plot(vz["log_T"],vz,ls=":",color=l.get_color())
+    plt.sca(axes[-1,-1])
+    plt.legend(fontsize="x-small",loc=2,frameon=False)
+    plt.xlim(3,7)
+    plt.setp(axes[:,0],ylabel=r"$\log v\,[{\rm km/s}]$")
+    plt.setp(axes[-1,:],xlabel=r"$\log T\,[{\rm K}]$")
+
+    if savefig:
+        plt.savefig(osp.join(fig_outdir, f"{name}_velocity_pdfs.pdf"))
+    return fig

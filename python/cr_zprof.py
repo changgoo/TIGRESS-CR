@@ -396,6 +396,28 @@ def load_windpdf(s, tslice=slice(150, 500), both=True):
         s.outflux = outflux
         s.influx = influx
 
+def load_velocity_pdfs(sim, xf = "T",
+                       vel_fields = ["velocity3", "0-Vs3", "0-Vd3", "0-Veff3", "Vtotz"]):
+    if hasattr(sim,"vel_pdfs"):
+        return sim.vel_pdfs
+
+    vel_pdfs = dict()
+
+    for yf in vel_fields:
+        for num in sim.nums:
+            if yf not in vel_pdfs:
+                vel_pdfs[yf]=[]
+            pdf = sim.get_jointpdf(num, "pdf", filebase="-".join([xf,yf]),
+                                    xf=xf, yf=yf,
+                                    wlist=[None, "nH", "pok_cr"],
+                                    xlim=(1,9), ylim=(-1,4),
+                                    force_override=False)
+            vel_pdfs[yf].append(pdf)
+
+    for vf in vel_fields:
+        vel_pdfs[vf] = xr.concat(vel_pdfs[vf],dim="time")
+    sim.vel_pdfs = vel_pdfs
+    return vel_pdfs
 
 def print_sim_table(sims):
     """Print a formatted table of simulation parameters to stdout.
