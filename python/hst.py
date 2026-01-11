@@ -340,6 +340,8 @@ class Hst:
             else:
                 idx = np.where(h.time.diff() <= 0)[0]
             n_discont = len(idx)
+        if not sn:
+            h.index = h["time_code"]
         return h
 
 

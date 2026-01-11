@@ -396,15 +396,18 @@ def load_windpdf(s, tslice=slice(150, 500), both=True):
         s.outflux = outflux
         s.influx = influx
 
-def load_velocity_pdfs(sim, xf = "T",
+def load_velocity_pdfs(sim, tslice=slice(150, 500),
+                       xf = "T",
                        vel_fields = ["velocity3", "0-Vs3", "0-Vd3", "0-Veff3", "Vtotz"]):
     if hasattr(sim,"vel_pdfs"):
         return sim.vel_pdfs
 
     vel_pdfs = dict()
 
-    for yf in vel_fields:
-        for num in sim.nums:
+    for num in sim.nums:
+        if (num < tslice.start) or (num > tslice.stop):
+            pass
+        for yf in vel_fields:
             if yf not in vel_pdfs:
                 vel_pdfs[yf]=[]
             pdf = sim.get_jointpdf(num, "pdf", filebase="-".join([xf,yf]),
