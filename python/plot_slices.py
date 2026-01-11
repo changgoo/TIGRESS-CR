@@ -337,7 +337,10 @@ def plot_projections(sim, num, savefig=True):
     )
 
     if savefig:
-        savdir = osp.join(sim.savdir, "cr_snapshot_prj")
+        if sim.options["cosmic_ray"]:
+            savdir = osp.join(sim.savdir, "cr_snapshot_prj")
+        else:
+            savdir = osp.join(sim.savdir, "mhd_snapshot_prj")
         if not osp.exists(savdir):
             os.makedirs(savdir, exist_ok=True)
 
@@ -931,7 +934,10 @@ def plot_slices_cr(
             bbox=dict(boxstyle="round,pad=0.2", fc="w", ec="k", lw=1),
         )
     if savefig:
-        savdir = osp.join(sim.savdir, "cr_slices")
+        if sim.optinos["cosmic_ray"]:
+            savdir = osp.join(sim.savdir, "cr_slices")
+        else:
+            savdir = osp.join(sim.savdir, "mhd_slices")
         if not osp.exists(savdir):
             os.makedirs(savdir, exist_ok=True)
 
@@ -958,26 +964,39 @@ if __name__ == "__main__":
             plt.close(f)
             head = "ncr"
         else:
-            f = plot_slices(spp, num)
-            plt.close(f)
             f = plot_projections(spp, num)
             plt.close(f)
-            flist = [
-                "nH",
-                "T",
-                "vz",
-                "sigma_para",
-                "vmag",
-                "VAi_mag",
-                "Vcr_mag",
-                "pok_cr",
-                "pok_trbz",
-                "pok",
-                "pok_mag",
-            ]
+            if spp.options["cosmic_ray"]:
+                f = plot_slices(spp, num)
+                plt.close(f)
+                flist = [
+                    "nH",
+                    "T",
+                    "vz",
+                    "sigma_para",
+                    "vmag",
+                    "VAi_mag",
+                    "Vcr_mag",
+                    "pok_cr",
+                    "pok_trbz",
+                    "pok",
+                    "pok_mag",
+                ]
+                head = "cr"
+            else:
+                flist = [
+                    "nH",
+                    "T",
+                    "vz",
+                    "vmag",
+                    "pok_trbz",
+                    "pok",
+                    "pok_mag",
+                ]
+                head = "mhd"
             f = plot_slices_cr(spp, num, flist=flist, time=True, savefig=True)
             plt.close(f)
-            head = "cr"
+
         gc.collect()
 
     for k, v in zip(spp.hdf5_outid, spp.hdf5_outvar):
@@ -1028,14 +1047,14 @@ if __name__ == "__main__":
         if not osp.isdir(osp.join(spp.basedir, "movies")):
             os.mkdir(osp.join(spp.basedir, "movies"))
         if head == "cr":
-            fin = osp.join(spp.basedir, f"{head}_slices/*.png")
-            fout = osp.join(spp.basedir, f"movies/{spp.basename}_{head}_slices.mp4")
+            fin = osp.join(spp.basedir, f"{head}_snapshot/*.png")
+            fout = osp.join(spp.basedir, f"movies/{spp.basename}_{head}_snapshot.mp4")
             try:
                 make_movie(fin, fout, fps_in=15, fps_out=15)
             except FileNotFoundError:
                 pass
-        fin = osp.join(spp.basedir, f"{head}_snapshot/*.png")
-        fout = osp.join(spp.basedir, f"movies/{spp.basename}_{head}_snapshot.mp4")
+        fin = osp.join(spp.basedir, f"{head}_slices/*.png")
+        fout = osp.join(spp.basedir, f"movies/{spp.basename}_{head}_slices.mp4")
         try:
             make_movie(fin, fout, fps_in=15, fps_out=15)
         except FileNotFoundError:
