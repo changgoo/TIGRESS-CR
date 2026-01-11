@@ -934,7 +934,7 @@ def plot_slices_cr(
             bbox=dict(boxstyle="round,pad=0.2", fc="w", ec="k", lw=1),
         )
     if savefig:
-        if sim.optinos["cosmic_ray"]:
+        if sim.options["cosmic_ray"]:
             savdir = osp.join(sim.savdir, "cr_slices")
         else:
             savdir = osp.join(sim.savdir, "mhd_slices")
