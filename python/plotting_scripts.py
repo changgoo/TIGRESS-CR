@@ -1344,7 +1344,7 @@ def plot_flux_z(
     )
     lines, labels = axs[2].get_legend_handles_labels()
     if len(lines) > 2:
-        custom_lines = [lines[icrmhd-2], lines[icrmhd-1]]
+        custom_lines = [lines[icrmhd - 2], lines[icrmhd - 1]]
         plt.legend(custom_lines, ["MHD flux", "CR flux"], fontsize="x-small")
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
     if both:
@@ -1386,7 +1386,7 @@ def plot_loading_z(
     fig, axes = plt.subplots(
         3, 2, figsize=(8, 7), sharey="row", sharex="col", constrained_layout=True
     )
-    icrmhd=0
+    icrmhd = 0
     for m, s in sims.items():
         Zsn = s.par["feedback"]["Z_SN"]
         Mej = s.par["feedback"]["M_ej"]
@@ -1458,7 +1458,7 @@ def plot_loading_z(
                     ls="--",
                 )
             plt.yscale("log")
-            plt.ylim(1.0e-2, 1)
+            plt.ylim(1.0e-2, 5)
 
             plt.sca(axs[2])
             plot_zprof(
@@ -1514,7 +1514,7 @@ def plot_loading_z(
         # r"$\,[{\rm erg\,kpc^{-2}\,yr^{-1}}]$"
     )
     lines, labels = axs[2].get_legend_handles_labels()
-    custom_lines = [lines[icrmhd-2], lines[icrmhd-1]]
+    custom_lines = [lines[icrmhd - 2], lines[icrmhd - 1]]
     plt.legend(custom_lines, ["MHD flux", "CR flux"], fontsize="x-small")
     # plt.setp(axs[-1], "xlabel", r"$z\,[{\rm kpc}]$")
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
@@ -1943,8 +1943,13 @@ def plot_kappa_z(
 
 
 def plot_gainloss_z_each(
-    s, m, phases=["wc", "hot"], tslice=slice(150, 500),
-    grav_work=False, kpc=True, savefig=True
+    s,
+    m,
+    phases=["wc", "hot"],
+    tslice=slice(150, 500),
+    grav_work=False,
+    kpc=True,
+    savefig=True,
 ):
     """Plot thermal energy loss/gain and CR energy loss/gain rates.
 
@@ -2124,12 +2129,14 @@ def plot_gainloss_z(
         cr_work=r"$W_{\rm gas-cr}$",
         grav_work=r"$W_{\rm grav}$",
     )
-    nmhd=0
+    nmhd = 0
+    names = []
     for m, s in sims.items():
         if not s.options["cosmic_ray"]:
             nmhd += 1
         color = model_color[m]
         name = model_name[m]
+        names.append(name)
         is_zp_pp = hasattr(s, "zp_pp")
         if phases[0] == "wc" and phases[1] == "hot":
             if is_zp_pp:
@@ -2203,19 +2210,31 @@ def plot_gainloss_z(
     if nmhd == 0:
         inext = 5 if grav_work else 4
     elif nmhd == 1:
-        inext = nmhd*3 if grav_work else nmhd*2  # number of mhd lines plotted
+        inext = nmhd * 3 if grav_work else nmhd * 2  # number of mhd lines plotted
     plt.sca(axes[0, 0])
     plt.ylabel("Loss/Gain for Gas\n" + r"$[{\rm erg\,s^{-1}\,cm^{-3}}]$")
     plt.yscale("log")
     plt.ylim(1.0e-30, 1.0e-25)
+    lines, labels = axes[0, 0].get_legend_handles_labels()
+    custom_lines = [lines[0], lines[inext]]
+    custom_labels = names
+    plt.legend(
+        custom_lines,
+        custom_labels,
+        fontsize="x-small",
+        title="model",
+        title_fontsize="x-small",
+        frameon=False,
+        loc=1,
+    )
 
     plt.sca(axes[0, 1])
     lines, labels = axes[0, 1].get_legend_handles_labels()
-    custom_lines = [lines[nmhd], lines[nmhd + 3]]
-    custom_labels = [labels[nmhd], labels[nmhd + 3]]
+    custom_lines = [lines[nmhd + 1], lines[nmhd + 4]]
+    custom_labels = [labels[nmhd + 1], labels[nmhd + 4]]
     if grav_work:
-        custom_lines.append(lines[nmhd + 4])
-        custom_labels.append(labels[nmhd + 4])
+        custom_lines.append(lines[nmhd + 5])
+        custom_labels.append(labels[nmhd + 5])
     plt.legend(
         custom_lines,
         custom_labels,
@@ -2226,37 +2245,26 @@ def plot_gainloss_z(
         loc=1,
     )
 
-    plt.sca(axes[0, 2])
-    lines, labels = axes[0, 2].get_legend_handles_labels()
-    custom_lines = [lines[nmhd + 1], lines[nmhd + 2]]
-    custom_labels = [labels[nmhd + 1], labels[nmhd + 2]]
-    plt.legend(
-        custom_lines,
-        custom_labels,
-        fontsize="x-small",
-        title="gas gain",
-        title_fontsize="x-small",
-        frameon=False,
-        loc=1,
-    )
-    # plt.legend(fontsize="x-small")
+    if len(axes[0, :]) == 3:
+        plt.sca(axes[0, 2])
+        lines, labels = axes[0, 2].get_legend_handles_labels()
+        custom_lines = [lines[nmhd + 2], lines[nmhd + 3]]
+        custom_labels = [labels[nmhd + 2], labels[nmhd + 3]]
+        plt.legend(
+            custom_lines,
+            custom_labels,
+            fontsize="x-small",
+            title="gas gain",
+            title_fontsize="x-small",
+            frameon=False,
+            loc=1,
+        )
+        # plt.legend(fontsize="x-small")
 
     plt.sca(axes[1, 0])
     plt.ylabel("Loss/Gain for CRs\n" + r"$[{\rm erg\,s^{-1}\,cm^{-3}}]$")
     plt.yscale("log")
     plt.ylim(1.0e-30, 1.0e-25)
-    lines, labels = axes[0, 0].get_legend_handles_labels()
-    custom_lines = [lines[0], lines[inext]]
-    custom_labels = list(model_name.values())
-    plt.legend(
-        custom_lines,
-        custom_labels,
-        fontsize="x-small",
-        title="model",
-        title_fontsize="x-small",
-        frameon=False,
-        loc=1,
-    )
 
     plt.sca(axes[1, 1])
     lines, labels = axes[1, 1].get_legend_handles_labels()
@@ -2272,19 +2280,20 @@ def plot_gainloss_z(
         frameon=False,
     )
 
-    plt.sca(axes[1, 2])
-    lines, labels = axes[1, 2].get_legend_handles_labels()
-    custom_lines = [lines[1], lines[3]]
-    custom_labels = [labels[1], labels[3]]
-    plt.legend(
-        custom_lines,
-        custom_labels,
-        fontsize="x-small",
-        title="CR gain",
-        title_fontsize="x-small",
-        frameon=False,
-        loc=1,
-    )
+    if len(axes[1, :]) == 3:
+        plt.sca(axes[1, 2])
+        lines, labels = axes[1, 2].get_legend_handles_labels()
+        custom_lines = [lines[1], lines[3]]
+        custom_labels = [labels[1], labels[3]]
+        plt.legend(
+            custom_lines,
+            custom_labels,
+            fontsize="x-small",
+            title="CR gain",
+            title_fontsize="x-small",
+            frameon=False,
+            loc=1,
+        )
 
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
     plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label, xlim=(-4, 4))
@@ -2297,8 +2306,7 @@ def plot_gainloss_z(
 def plot_momentum_transfer_z(
     simgroup,
     gr,
-    hot="full",
-    showall=False,
+    show_option=1,
     zmin=1000,
     tslice=slice(150, 500),
     kpc=True,
@@ -2316,10 +2324,10 @@ def plot_momentum_transfer_z(
         Nested dictionary of grouped simulations
     gr : str
         Group name to plot
-    hot : str
-        How to show hot phase contribution: 'full' for total or 'trb' for turbulent only
-    showall : bool
-        If True, show all contributions (default=False)
+    show_option : int
+        1 -- (F-W) for wc and hot, Pcr for all
+        2 -- (F-W) for wc and hot, Pcr for wc and hot
+        3 -- (F-W) for wc, Pcr for wc and hot for (F-W)+Pcr
     zmin : float
         Minimum z height to consider (default=1000)
     tslice : slice
@@ -2426,55 +2434,85 @@ def plot_momentum_transfer_z(
 
             # calculating RHS from hot
             RHS = -(dFMHD - W).sel(phase="hot")
-            RHS_hot = -(dFMHD - W).sel(phase="hot")
-            RHS_hot_label = r"$-(\Delta_z \mathcal{F}_{\rm MHD}^{\rm hot}-\Delta_z \mathcal{W}^{\rm hot})$"
             if s.options["cosmic_ray"]:
-                RHS_hot += (-dPcr).sel(phase="hot")
                 RHS += (-dPcr).sum(dim="phase")
-                RHS_hot_label += r"$-\Delta_z P_{\rm cr}^{\rm hot}$"
 
-            if showall:
+            # plot_zprof_mean_quantile(
+            #     RHS, kpc=kpc, color=color, ls=":", lw=3, quantile=False, label="RHS"
+            # )
+
+            if show_option == 1:
+                # taking into account weight
                 plot_zprof_mean_quantile(
-                    RHS, kpc=kpc, color=color, ls=":", lw=3, quantile=False, label="RHS"
-                )
-            else:
-                # dflux - weight - P_CR from hot phase only
-                plot_zprof_mean_quantile(
-                    RHS_hot,
+                    (dFMHD - W).sel(phase="wc"),
                     kpc=kpc,
-                    label=RHS_hot_label,
+                    label=r"$\Delta_z \mathcal{F}_{\rm MHD}^{\rm wc}-\Delta_z \mathcal{W}^{\rm wc}$",
                     color=color,
-                    ls="-.",
+                    lw=3,
+                )
+                # Flux difference alone
+                plot_zprof_mean_quantile(
+                    (dFMHD).sel(phase="wc"),
+                    kpc=kpc,
+                    label=r"$\Delta_z \mathcal{F}_{\rm MHD}^{\rm wc}$",
+                    color=color,
+                    lw=1,
                     quantile=False,
                 )
-            # taking into account weight
-            plot_zprof_mean_quantile(
-                (dFMHD - W).sel(phase="wc"),
-                kpc=kpc,
-                label=r"$\Delta_z \mathcal{F}_{\rm MHD}^{\rm wc}-\Delta_z \mathcal{W}^{\rm wc}$",
-                color=color,
-                lw=3,
-            )
-            # Flux difference alone
-            plot_zprof_mean_quantile(
-                (dFMHD).sel(phase="wc"),
-                kpc=kpc,
-                label=r"$\Delta_z \mathcal{F}_{\rm MHD}^{\rm wc}$",
-                color=color,
-                lw=1,
-                quantile=False,
-            )
-            if s.options["cosmic_ray"]:
+                # hot contribution
                 plot_zprof_mean_quantile(
-                    (-dPcr).sel(phase="wc"),
+                    -(dFMHD - W).sel(phase="hot"),
                     kpc=kpc,
-                    label=r"$-\Delta_z P_{\rm cr}^{\rm wc}$",
+                    label=r"$-(\Delta_z \mathcal{F}_{\rm MHD}^{\rm hot}-\Delta_z \mathcal{W}^{\rm hot})$",
                     color=color,
-                    ls="--",
+                    ls=":",
                     quantile=False,
                 )
-                # separtely show CR pressure in hot
-                if showall:
+                if s.options["cosmic_ray"]:
+                    plot_zprof_mean_quantile(
+                        (-dPcr).sum(dim="phase"),
+                        kpc=kpc,
+                        label=r"$-\Delta_z P_{\rm cr}$",
+                        color=color,
+                        ls="--",
+                        quantile=False,
+                    )
+            elif show_option == 2:
+                # taking into account weight
+                plot_zprof_mean_quantile(
+                    (dFMHD - W).sel(phase="wc"),
+                    kpc=kpc,
+                    label=r"$\Delta_z \mathcal{F}_{\rm MHD}^{\rm wc}-\Delta_z \mathcal{W}^{\rm wc}$",
+                    color=color,
+                    lw=3,
+                )
+                # Flux difference alone
+                plot_zprof_mean_quantile(
+                    (dFMHD).sel(phase="wc"),
+                    kpc=kpc,
+                    label=r"$\Delta_z \mathcal{F}_{\rm MHD}^{\rm wc}$",
+                    color=color,
+                    lw=1,
+                    quantile=False,
+                )
+                # hot contribution
+                plot_zprof_mean_quantile(
+                    -(dFMHD - W).sel(phase="hot"),
+                    kpc=kpc,
+                    label=r"$-(\Delta_z \mathcal{F}_{\rm MHD}^{\rm hot}-\Delta_z \mathcal{W}^{\rm hot})$",
+                    color=color,
+                    ls=":",
+                    quantile=False,
+                )
+                if s.options["cosmic_ray"]:
+                    plot_zprof_mean_quantile(
+                        (-dPcr).sel(phase="wc"),
+                        kpc=kpc,
+                        label=r"$-\Delta_z P_{\rm cr}^{\rm wc}$",
+                        color=color,
+                        ls="--",
+                        quantile=False,
+                    )
                     plot_zprof_mean_quantile(
                         (-dPcr).sel(phase="hot"),
                         kpc=kpc,
@@ -2483,31 +2521,44 @@ def plot_momentum_transfer_z(
                         ls="-.",
                         quantile=False,
                     )
-            if showall:
-                if hot == "full":
-                    # hot contribution
-                    plot_zprof_mean_quantile(
-                        -(dFMHD - W).sel(phase="hot"),
-                        kpc=kpc,
-                        label=r"$-(\Delta_z \mathcal{F}_{\rm MHD}^{\rm hot}-\Delta_z \mathcal{W}^{\rm hot})$",
-                        color=color,
-                        ls=":",
-                        quantile=False,
-                    )
-                elif hot == "trb":
-                    plot_zprof_mean_quantile(
-                        -dFtrb.sel(phase="hot"),
-                        kpc=kpc,
-                        label=r"$-\Delta_z \mathcal{F}_{\rm trb}^{\rm hot}$",
-                        color=color,
-                        ls=":",
-                        quantile=False,
-                    )
+
+            elif show_option == 3:
+                # taking into account weight
+                plot_zprof_mean_quantile(
+                    (dFMHD - W).sel(phase="wc"),
+                    kpc=kpc,
+                    label=r"$\Delta_z \mathcal{F}_{\rm MHD}^{\rm wc}-\Delta_z \mathcal{W}^{\rm wc}$",
+                    color=color,
+                    lw=3,
+                )
+                # Flux difference alone
+                plot_zprof_mean_quantile(
+                    (dFMHD).sel(phase="wc"),
+                    kpc=kpc,
+                    label=r"$\Delta_z \mathcal{F}_{\rm MHD}^{\rm wc}$",
+                    color=color,
+                    lw=1,
+                    quantile=False,
+                )
+                RHS_hot = -(dFMHD - W).sel(phase="hot")
+                RHS_hot_label = r"$-(\Delta_z \mathcal{F}_{\rm MHD}^{\rm hot}-\Delta_z \mathcal{W}^{\rm hot})$"
+                if s.options["cosmic_ray"]:
+                    RHS_hot += (-dPcr).sel(phase="hot")
+                    RHS_hot_label += r"$-\Delta_z P_{\rm cr}^{\rm hot}$"
+                # hot contribution
+                plot_zprof_mean_quantile(
+                    RHS_hot,
+                    kpc=kpc,
+                    label=RHS_hot_label,
+                    color=color,
+                    ls=":",
+                    quantile=False,
+                )
 
     plt.sca(axes[0, 0])
     plt.title("lower")
     plt.xlim(-4, -1)
-    plt.ylim(-1, 2.5)
+    plt.ylim(-1, 3)
     plt.sca(axes[0, 1])
     plt.title("upper")
     plt.legend(frameon=False, loc=2)
@@ -2521,10 +2572,7 @@ def plot_momentum_transfer_z(
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
     plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label)
     if savefig:
-        if showall:
-            plt.savefig(osp.join(fig_outdir, f"{gr}_dflux_{hot}.pdf"))
-        else:
-            plt.savefig(osp.join(fig_outdir, f"{gr}_dflux.pdf"))
+        plt.savefig(osp.join(fig_outdir, f"{gr}_dflux_{show_option}.pdf"))
     return fig
 
 
@@ -2583,7 +2631,7 @@ def plot_mass_fraction_t(simgroup, gr, zslice=slice(-50, 50), savefig=True):
     return fig
 
 
-def plot_history(simgroup, gr, tslice=slice(150, 500), savefig=True):
+def plot_history(simgroup, gr, tslice=slice(150, 500), tmax=None, savefig=True):
     """Plot simulation history (star formation rate and other quantities).
 
     Creates a 2-panel plot showing star formation rate and vertical momentum
@@ -2600,6 +2648,8 @@ def plot_history(simgroup, gr, tslice=slice(150, 500), savefig=True):
     savefig : bool
         If True, save figure (default=True)
     """
+    if tmax is None:
+        tmax = tslice.stop
     sims = simgroup[gr]
     fig, axes = plt.subplots(
         1, 2, figsize=(8, 2.5), sharex=True, constrained_layout=True
@@ -2615,9 +2665,24 @@ def plot_history(simgroup, gr, tslice=slice(150, 500), savefig=True):
 
         avg = h[field].loc[tslice].mean()
         std = h[field].loc[tslice].std()
-        plt.axhline(avg, color=color, lw=1, ls="--")
-        plt.axhspan(avg - std, avg + std, color=color, alpha=0.1, lw=0)
-        print(m, avg, std)
+        plt.axhline(
+            avg,
+            xmin=tslice.start / tmax,
+            xmax=tslice.stop / tmax,
+            color=color,
+            lw=1,
+            ls="--",
+        )
+        plt.axhspan(
+            avg - std,
+            avg + std,
+            xmin=tslice.start / tmax,
+            xmax=tslice.stop / tmax,
+            color=color,
+            alpha=0.1,
+            lw=0,
+        )
+        print(name, field, avg, std)
 
     plt.sca(axes[1])
     for field, label, ls in zip(
@@ -2633,13 +2698,14 @@ def plot_history(simgroup, gr, tslice=slice(150, 500), savefig=True):
             plt.plot(
                 h["time"], h[field], label=label if i == 0 else None, ls=ls, color=color
             )
+            print(name, field, h[field].loc[tslice].min(), h[field].loc[tslice].max())
             i += 1
     plt.sca(axes[0])
     plt.ylabel(r"$\Sigma_{\rm SFR}\,[M_\odot\,{\rm kpc^{-2}\,yr^{-1}}]$")
     plt.ylim(bottom=0)
     # plt.ylim(1.0e-3, 1.0e-2)
     # plt.yscale("log")
-    plt.legend(fontsize="x-small")
+    plt.legend(fontsize="x-small", loc=1)
     plt.xlabel(r"$t\,[{\rm Myr}]$")
     plt.annotate("(a)", xy=(0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
     plt.sca(axes[1])
@@ -2647,7 +2713,7 @@ def plot_history(simgroup, gr, tslice=slice(150, 500), savefig=True):
     plt.ylim(0, 15)
     plt.legend(fontsize="x-small")
     plt.xlabel(r"$t\,[{\rm Myr}]$")
-    plt.xlim(0, 500)
+    plt.xlim(0, tmax)
     plt.annotate("(b)", xy=(0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
     if savefig:
         plt.savefig(osp.join(fig_outdir, f"{gr}_history.pdf"))
@@ -2655,7 +2721,9 @@ def plot_history(simgroup, gr, tslice=slice(150, 500), savefig=True):
     return fig
 
 
-def plot_pressure_t(simgroup, gr, ph="wc", zslice=slice(-50, 50), savefig=True):
+def plot_pressure_t(
+    simgroup, gr, ph="wc", tslice=slice(150, 500), zslice=slice(-50, 50), savefig=True
+):
     """Plot pressure components vs. time in the disk midplane.
 
     Creates a 4-panel plot showing CR, thermal, kinetic, and magnetic pressure
@@ -2703,10 +2771,10 @@ def plot_pressure_t(simgroup, gr, ph="wc", zslice=slice(-50, 50), savefig=True):
             #              xycoords="axes fraction",ha="left",va="top")
             plt.title(label)
             plt.yscale("log")
-            plt.axvline(150, color="k", ls=":")
+            plt.axvline(tslice.start, color="k", ls=":")
             plt.ylim(5.0e2, 1.0e5)
             plt.xlabel(r"$t\,[{\rm Myr}]$")
-            plt.xlim(0, 500)
+            plt.xlim(0, tslice.stop)
 
     plt.sca(axes[1])
     plt.legend(fontsize="small")
@@ -2718,7 +2786,7 @@ def plot_pressure_t(simgroup, gr, ph="wc", zslice=slice(-50, 50), savefig=True):
 
 
 def plot_vertical_equilibrium_t(
-    simgroup, gr, ph="wc", exclude=[], zmax=1000, savefig=True
+    simgroup, gr, ph="wc", exclude=[], zmax=1000, tslice=slice(150, 500), savefig=True
 ):
     """Plot vertical pressure equilibrium evolution over time.
 
@@ -2803,11 +2871,12 @@ def plot_vertical_equilibrium_t(
         # plt.yscale("log")
         # plt.ylim(5.0e2, 5.0e4)
         plt.xlabel(r"$t\,[{\rm Myr}]$")
-    plt.xlim(0, 500)
+    plt.xlim(0, tslice.stop)
     plt.sca(axes[0])
     plt.ylabel(  # r"$\langle P_{\rm tot} \rangle^{\rm wc}/f_A^{\rm wc}$"
         # r"$\,\langle \mathcal{W}_{\rm tot}\rangle^{\rm wc}$"
-        r"$\Delta_{1{\rm kpc}} P\,[10^4 k_B{\rm cm^{-3}\,K}]$"
+        # r"$\Delta_{1{\rm kpc}} P\,[10^4 k_B{\rm cm^{-3}\,K}]$"
+        r"$\Delta P(1{\rm kpc})\,[10^4 k_B{\rm cm^{-3}\,K}]$"
     )
     plt.sca(axes[1])
     plt.legend(fontsize="small", loc=1)
@@ -2819,7 +2888,7 @@ def plot_vertical_equilibrium_t(
 # ----------------------------------------
 # plotting functions outflow velocity PDFs
 # ----------------------------------------
-def plot_jointpdf(simgroup, gr, kpc=True, savefig=True):
+def plot_jointpdf(simgroup, gr, flux="mflux", kpc=True, savefig=True):
     """Plot 2D joint PDF of outflow velocity and sound speed.
 
     Creates a 2D histogram showing the probability distribution of outflow
@@ -2850,6 +2919,7 @@ def plot_jointpdf(simgroup, gr, kpc=True, savefig=True):
         dbin = outflux.logvz[1] - outflux.logvz[0]
         dbinsq = dbin**2
         name = model_name[m]
+        norm = LogNorm(1.0e-5, 1.0) if flux == "mflux" else LogNorm(1.0e40, 1.0e48)
         for z0, ax in zip(outflux.z, axs):
             z = z0 / 1.0e3 if kpc else z0
             zunit_label = r"$\,{\rm kpc}$" if kpc else r"$\,{\rm pc}$"
@@ -2857,8 +2927,8 @@ def plot_jointpdf(simgroup, gr, kpc=True, savefig=True):
             plt.pcolormesh(
                 outflux.logvz,
                 outflux.logcs,
-                outflux.sel(z=z0, flux="mflux") / dbinsq,
-                norm=LogNorm(1.0e-5, 1.0),
+                outflux.sel(z=z0, flux=flux) / dbinsq,
+                norm=norm,
                 cmap=cmr.fall_r,
             )
             if name == "mhd":
@@ -2883,7 +2953,7 @@ def plot_jointpdf(simgroup, gr, kpc=True, savefig=True):
         label=r"$d^2\mathcal{F}_M/d\log v_{\rm out}d\log c_s\,[M_\odot\,{\rm kpc^{-2}\,yr^{-1}\,dex^{-2}}]$",
     )
     if savefig:
-        plt.savefig(osp.join(fig_outdir, f"{gr}_jointpdfs.png"))
+        plt.savefig(osp.join(fig_outdir, f"{gr}_jointpdfs_{flux}.png"))
     return fig
 
 
@@ -2979,46 +3049,62 @@ def plot_voutpdf(simgroup, gr, kpc=True, savefig=True):
 
     return fig
 
-def plot_velocity_pdfs(sim, m, wf = "pok_cr", tslice=slice(150,500), savefig=True):
+
+def plot_velocity_pdfs(sim, m, wf="pok_cr", tslice=slice(150, 500), savefig=True):
     name = model_name[m]
     vel_pdfs = sim.vel_pdfs
     vel_fields = list(vel_pdfs.keys())
-    fig,axes = plt.subplots(2,3,figsize=(8,6),
-                            sharey=True,sharex=True,constrained_layout=True,)
+    fig, axes = plt.subplots(
+        2,
+        3,
+        figsize=(8, 6),
+        sharey=True,
+        sharex=True,
+        constrained_layout=True,
+    )
 
-    labels={"velocity3":r"$v_z$",
-            "0-Vs3":r"$v_{{\rm s},z}$",
-            "0-Vd3":r"$v_{{\rm d},z}$",
-            "0-Veff3":r"$v_{{\rm eff},z}$",
-            "Vtotz":r"$v_{{\rm dyn},z}\equiv v_z+v_{{\rm s},z}$",}
+    labels = {
+        "velocity3": r"$v_z$",
+        "0-Vs3": r"$v_{{\rm s},z}$",
+        "0-Vd3": r"$v_{{\rm d},z}$",
+        "0-Veff3": r"$v_{{\rm eff},z}$",
+        "Vtotz": r"$v_{{\rm dyn},z}\equiv v_z+v_{{\rm s},z}$",
+    }
 
-    for vf,ax in zip(vel_fields,axes.flat):
+    for vf, ax in zip(vel_fields, axes.flat):
         pdf = vel_pdfs[vf].sel(time=tslice).mean(dim="time")
         pok_cr_mean = vel_pdfs[vf][wf].sel(time=tslice).mean(dim="time")
         plt.sca(ax)
-        plt.pcolormesh(pdf["log_T"],pdf[f"log_{vf}"],pdf[f"{wf}-pdf"]/pok_cr_mean,
-                       norm=LogNorm(1.e-5,1),cmap=cmr.fall_r)
-    plt.sca(axes[-1,-1])
-    for vf,ax in zip(vel_fields,axes.flat):
+        plt.pcolormesh(
+            pdf["log_T"],
+            pdf[f"log_{vf}"],
+            pdf[f"{wf}-pdf"] / pok_cr_mean,
+            norm=LogNorm(1.0e-5, 1),
+            cmap=cmr.fall_r,
+        )
+    plt.sca(axes[-1, -1])
+    for vf, ax in zip(vel_fields, axes.flat):
         pdf = vel_pdfs[vf].sel(time=tslice).mean(dim="time")
         vf_ = f"log_{vf}"
         # get mean in linear space
-        vz = (pdf[f"{wf}-pdf"]*10.**pdf[vf_]).sum(dim=vf_)/(pdf[f"{wf}-pdf"]).sum(dim=vf_)
+        vz = (pdf[f"{wf}-pdf"] * 10.0 ** pdf[vf_]).sum(dim=vf_) / (
+            pdf[f"{wf}-pdf"]
+        ).sum(dim=vf_)
         vz = np.log10(vz)
-        label=labels[vf]
-        plt.sca(axes[-1,-1])
-        l,=plt.plot(vz["log_T"],vz,label=label)
+        label = labels[vf]
+        plt.sca(axes[-1, -1])
+        (l,) = plt.plot(vz["log_T"], vz, label=label)
         plt.sca(ax)
-        plt.plot(vz["log_T"],vz,color=l.get_color())
-        plt.annotate(label,(0.05,0.95),xycoords="axes fraction",ha="left",va="top")
+        plt.plot(vz["log_T"], vz, color=l.get_color())
+        plt.annotate(label, (0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
         # # get mean in log space
         # vz=(pdf[f"{wf}-pdf"]*pdf[vf_]).sum(dim=vf_)/(pdf[f"{wf}-pdf"]).sum(dim=vf_)
         # plt.plot(vz["log_T"],vz,ls=":",color=l.get_color())
-    plt.sca(axes[-1,-1])
-    plt.legend(fontsize="x-small",loc=2,frameon=False)
-    plt.xlim(3,7)
-    plt.setp(axes[:,0],ylabel=r"$\log v\,[{\rm km/s}]$")
-    plt.setp(axes[-1,:],xlabel=r"$\log T\,[{\rm K}]$")
+    plt.sca(axes[-1, -1])
+    plt.legend(fontsize="x-small", loc=2, frameon=False)
+    plt.xlim(3, 7)
+    plt.setp(axes[:, 0], ylabel=r"$\log v\,[{\rm km/s}]$")
+    plt.setp(axes[-1, :], xlabel=r"$\log T\,[{\rm K}]$")
 
     if savefig:
         plt.savefig(osp.join(fig_outdir, f"{name}_velocity_pdfs.pdf"))

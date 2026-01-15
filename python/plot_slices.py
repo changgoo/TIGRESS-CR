@@ -948,7 +948,7 @@ def plot_slices_cr(
 
 if __name__ == "__main__":
     COMM = MPI.COMM_WORLD
-    spp = LoadSimTIGRESSPP(sys.argv[1],verbose=COMM.rank == 0)
+    spp = LoadSimTIGRESSPP(sys.argv[1], verbose=COMM.rank == 0)
     spp.update_derived_fields()
     spp.dt = [spp.par[f"output{i + 1}"]["dt"] for i, v in enumerate(spp.out_fmt)]
 

@@ -332,7 +332,7 @@ class Hst:
             t0 = time.iloc[i]
             self.logger.info(f"[read_hst]: cut out overlapped time ranges from {t0}")
             # print(i,t0)
-            h_good1 = h.iloc[np.where(time.iloc[:i-1] < t0)[0]]
+            h_good1 = h.iloc[np.where(time.iloc[: i - 1] < t0)[0]]
             h_good2 = h.iloc[i:]
             h_good = pd.concat([h_good1, h_good2], ignore_index=True)
             h = h_good
