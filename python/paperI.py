@@ -17,36 +17,36 @@ from plot_slices import plot_snapshot_comp, plot_slices_cr
 
 # model initialization
 model_name = {
-    "crmhd_v2-8pc-b1-diode-lngrad_out": "crmhd",
-    "mhd_v2-8pc-b1-diode": "mhd",
+    "crmhd-8pc-b1-diode-lngrad_out-sigma_selfc-Vmax2": "crmhd",
+    "mhd-8pc-b1-diode": "mhd",
 }
 
 model_color = {
-    "crmhd_v2-8pc-b1-diode-lngrad_out": "#E77500",
-    "mhd_v2-8pc-b1-diode": "#000000",
+    "crmhd-8pc-b1-diode-lngrad_out-sigma_selfc-Vmax2": "#E77500",
+    "mhd-8pc-b1-diode": "#000000",
 }
 model_edge_color = {
-    "mhd_v2-8pc-b1-diode": "#E77500",
-    "crmhd_v2-8pc-b1-diode-lngrad_out": "#000000",
+    "mhd-8pc-b1-diode": "#E77500",
+    "crmhd-8pc-b1-diode-lngrad_out-sigma_selfc-Vmax2": "#000000",
 }
 
 model_default = [
-    "mhd_v2-8pc-b1-diode",
-    "crmhd_v2-8pc-b1-diode-lngrad_out",
+    "mhd-8pc-b1-diode",
+    "crmhd-8pc-b1-diode-lngrad_out-sigma_selfc-Vmax2",
 ]
 
 # set directories
-outdir = "../figures"
-basedir = "/scratch/gpfs/EOST/changgoo/tigress_classic/"
+outdir = "../figures-new"
+basedir = "/scratch/gpfs/changgoo/tigress_classic/"
 
 # set snapshot numbers
-snapshot_nums = dict(mhd=[88, 75], crmhd=[78, 65])
+snapshot_nums = dict(mhd=[367, 298], crmhd=[367, 298])
 
 # sim group
 simgroup = dict()
 group = "default"
 
-tslice = slice(150, 500)
+tslice = slice(200, 600)
 zslice = slice(-50, 50)
 
 
@@ -64,7 +64,7 @@ def load(verbose=True):
     # load data
     load_group(simgroup, group)
     for m, s in sims.items():
-        zp = s.load_zprof_postproc()
+        # zp = s.load_zprof_postproc()
         load_windpdf(s, tslice=tslice, both=True)
 
     # setup for plotting scripts
@@ -118,12 +118,9 @@ def draw_figures(num="all"):
 
     if num == "all" or num == 8:
         # gain/loss
-        m = model_default[1]
-        sim = simgroup[group][m]
-        ps.plot_gainloss_z(sim, m, tslice=tslice)
         ps.plot_gainloss_z(
-            sim,
-            m,
+            simgroup,
+            group,
             phases=[["CNM", "UNM", "WNM"], "WHIM", "HIM"],
             tslice=tslice,
         )
@@ -142,13 +139,7 @@ def draw_figures(num="all"):
 
     if num == "all" or num == 12:
         # momentum transfer
-        ps.plot_momentum_transfer_z(simgroup, group, showall=False, tslice=tslice)
-        ps.plot_momentum_transfer_z(
-            simgroup, group, hot="trb", showall=True, tslice=tslice
-        )
-        ps.plot_momentum_transfer_z(
-            simgroup, group, hot="full", showall=True, tslice=tslice
-        )
+        ps.plot_momentum_transfer_z(simgroup, group, show_option=1, tslice=tslice)
 
     if num == "all" or num == 13:
         # joint pdfs
