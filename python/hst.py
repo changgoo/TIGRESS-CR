@@ -318,30 +318,35 @@ class Hst:
         return fig
 
     def make_monotonic(self, h, sn=False):
+        time = h["time_code"] if "time_code" in h else h["time"]
         if sn:
-            idx = np.where(h.time.diff() < 0)[0]
+            idx = np.where(time.diff() < 0)[0]
         else:
-            idx = np.where(h.time.diff() <= 0)[0]
+            idx = np.where(time.diff() <= 0)[0]
         n_discont = len(idx)
         if self.verbose and n_discont > 0:
             self.logger.info(f"[read_hst]: found {n_discont} overlapped time ranges")
 
         while n_discont > 0:
             i = idx[0]
-            t0 = h.iloc[i].time
+            t0 = time.iloc[i]
             self.logger.info(f"[read_hst]: cut out overlapped time ranges from {t0}")
             # print(i,t0)
-            h_good1 = h.iloc[np.where(h.iloc[: i - 1].time < t0)[0]]
+            h_good1 = h.iloc[np.where(time.iloc[:i-1] < t0)[0]]
             h_good2 = h.iloc[i:]
             h_good = pd.concat([h_good1, h_good2], ignore_index=True)
             h = h_good
+            time = h["time_code"] if "time_code" in h else h["time"]
             if sn:
-                idx = np.where(h.time.diff() < 0)[0]
+                idx = np.where(time.diff() < 0)[0]
             else:
-                idx = np.where(h.time.diff() <= 0)[0]
+                idx = np.where(time.diff() <= 0)[0]
             n_discont = len(idx)
         if not sn:
-            h.index = h["time_code"]
+            if "time_code" in h:
+                h.index = h["time_code"]
+            else:
+                h.index = h["time"]
         return h
 
 
