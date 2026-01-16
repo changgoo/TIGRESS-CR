@@ -2337,10 +2337,13 @@ def plot_momentum_transfer_z(
     savefig : bool
         If True, save figure (default=True)
     """
-    fig, axes = plt.subplots(
-        2, 2, figsize=(8, 6), sharey=True, sharex="col", constrained_layout=True
-    )
     sims = simgroup[gr]
+    nsim = len(sims)
+    fig, axes = plt.subplots(
+        nsim, 2, figsize=(8, 3*nsim),
+        sharey=True, sharex="col", constrained_layout=True
+    )
+
     for i, (m, s) in enumerate(sims.items()):
         color = model_color[m]
 
@@ -2905,16 +2908,18 @@ def plot_jointpdf(simgroup, gr, flux="mflux", kpc=True, savefig=True):
     savefig : bool
         If True, save figure (default=True)
     """
+    sims = simgroup[gr]
+    nsims = len(sims)
     fig, axes = plt.subplots(
-        2,
+        nsims,
         4,
-        figsize=(10, 4.8),
+        figsize=(10, 2.4*nsims),
         sharey="row",
         sharex="col",
         constrained_layout=True,
         gridspec_kw={"hspace": 0.01, "wspace": 0.01},
     )
-    for (m, s), axs in zip(simgroup[gr].items(), axes):
+    for (m, s), axs in zip(sims.items(), axes):
         outflux = s.outflux
         dbin = outflux.logvz[1] - outflux.logvz[0]
         dbinsq = dbin**2
@@ -2946,7 +2951,7 @@ def plot_jointpdf(simgroup, gr, flux="mflux", kpc=True, savefig=True):
             plt.ylim(0, 3.3)
             ax.set_aspect("equal")
     plt.setp(axes[:, 0], "ylabel", r"$\log c_s\,[{\rm km/s}]$")
-    plt.setp(axes[1, :], "xlabel", r"$\log v_{\rm out}\,[{\rm km/s}]$")
+    plt.setp(axes[nsims-1, :], "xlabel", r"$\log v_{\rm out}\,[{\rm km/s}]$")
     plt.colorbar(
         mappable=axes[0, 0].collections[0],
         ax=axes[:, -1],
@@ -2974,10 +2979,13 @@ def plot_voutpdf(simgroup, gr, kpc=True, savefig=True):
     savefig : bool
         If True, save figure (default=True)
     """
+    sims = simgroup[gr]
+    nsims = len(sims)
     fig, axes = plt.subplots(
-        2, 2, figsize=(8, 6), sharex="col", sharey="row", constrained_layout=True
+        2, nsims, figsize=(4*nsims, 6),
+        sharex="col", sharey="row", constrained_layout=True
     )
-    for (m, s), axs in zip(simgroup[gr].items(), axes.T):
+    for (m, s), axs in zip(sims.items(), axes.T):
         outflux = s.outflux
         dbin = outflux.logvz[1] - outflux.logvz[0]
         name = model_name[m]
@@ -3036,14 +3044,12 @@ def plot_voutpdf(simgroup, gr, kpc=True, savefig=True):
     plt.xlim(0, 3.5)
     plt.sca(axes[1, 0])
     plt.legend(fontsize="x-small")
-    plt.xlabel(r"$\log v_{\rm out}\,[{\rm km/s}]$")
     plt.ylabel(
         r"$d\mathcal{F}_{E,{\rm MHD}}/d\log v_{\rm out}$"
         + "\n"
         + r"$[{\rm erg}\,{\rm kpc^{-2}\,yr^{-1}\,dex^{-1}}]$"
     )
-    plt.sca(axes[1, 1])
-    plt.xlabel(r"$\log v_{\rm out}\,[{\rm km/s}]$")
+    plt.setp(axes[1, :], "xlabel", r"$\log v_{\rm out}\,[{\rm km/s}]$")
     if savefig:
         plt.savefig(osp.join(fig_outdir, f"{gr}_voutpdf.pdf"))
 

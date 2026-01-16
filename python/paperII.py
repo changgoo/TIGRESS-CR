@@ -28,26 +28,24 @@ model_name = dict()
 model_color = dict()
 
 
-def load(verbose=True):
+def load(model_dict,verbose=True):
     global simgroup, model_name, model_color
-    # find models
-    model_dict = cr_data_load(basedir)
 
     # initialize simgroup
-    groups = ["vAi", "vAtot", "nost", "σ28", "σ29", "crmhd"]
+    groups = ["vAi", "vAtot", "nost", "sigma28", "sigma29", "crmhd"]
     for gr in groups:
         simgroup[gr] = dict()
 
     # categorize models
     mlist = []
     for k, d in model_dict.items():
-        sim = LoadSimTIGRESSPP(d, verbose=False)
+        sim = LoadSimTIGRESSPP(d, verbose=verbose)
         par = sim.par
         base_split = sim.basename.split("-")
         model = []
         if par["cr"]["self_consistent_flag"] == 0:
             sigma_exp = int(-np.log10(par["cr"]["sigma"]))
-            sigma = f"σ{sigma_exp}"
+            sigma = f"sigma{sigma_exp}"
             model.append(sigma)
             if par["cr"]["valfven_flag"] == 1:
                 model.append("vAi")
@@ -65,6 +63,8 @@ def load(verbose=True):
                 model.append(f"b{par['problem']['beta0']}")
             if par["cr"]["vmax"] != 2.0e9:
                 model.append(f"Vmax{int(par['cr']['vmax'] / 1.0e9)}")
+        if "rst" in base_split[-1]:
+            model.append(base_split[-1])
         newkey = "-".join(model)
 
         if newkey in mlist:
