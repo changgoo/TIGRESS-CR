@@ -35,6 +35,11 @@ model_default = [
     "crmhd-8pc-b1-diode-lngrad_out-sigma_selfc-Vmax2",
 ]
 
+tslice = {
+    "mhd-8pc-b1-diode": slice(300, 500),
+    "crmhd-8pc-b1-diode-lngrad_out-sigma_selfc-Vmax2": slice(200, 400),
+}
+
 # set directories
 outdir = "../figures-new"
 basedir = "/scratch/gpfs/changgoo/tigress_classic/"
@@ -46,7 +51,6 @@ snapshot_nums = dict(mhd=[367, 298], crmhd=[367, 298])
 simgroup = dict()
 group = "default"
 
-tslice = slice(200, 600)
 zslice = slice(-50, 50)
 
 
@@ -65,7 +69,8 @@ def load(verbose=True):
     load_group(simgroup, group)
     for m, s in sims.items():
         # zp = s.load_zprof_postproc()
-        load_windpdf(s, tslice=tslice, both=True)
+        s.tslice = tslice[m]
+        load_windpdf(s, both=True)
 
     # setup for plotting scripts
     ps.setup(outdir, model_name, model_color)

@@ -330,7 +330,7 @@ def load_group(sim_group, group="default"):
             s.hst = s.make_monotonic(s.read_hst())
 
 
-def load_windpdf(s, tslice=slice(150, 500), both=True):
+def load_windpdf(s, both=True):
     """Load and process wind probability distribution functions.
 
     Loads outflow and inflow PDFs, normalizes by volume and area,
@@ -351,11 +351,11 @@ def load_windpdf(s, tslice=slice(150, 500), both=True):
 
     with xr.open_dataarray(oufpdf_fname) as da:
         s.outpdf = (
-            da.sel(flux=["mflux", "eflux", "mflux_Z"]).sel(time=tslice).mean(dim="time")
+            da.sel(flux=["mflux", "eflux", "mflux_Z"]).sel(time=s.tslice).mean(dim="time")
         )
     with xr.open_dataarray(inpdf_fname) as da:
         s.inpdf = (
-            da.sel(flux=["mflux", "eflux", "mflux_Z"]).sel(time=tslice).mean(dim="time")
+            da.sel(flux=["mflux", "eflux", "mflux_Z"]).sel(time=s.tslice).mean(dim="time")
         )
     zfc = np.linspace(s.domain["le"][2], s.domain["re"][2], s.domain["Nx"][2] + 1)
     zcc = 0.5 * (zfc[1:] + zfc[:-1])
@@ -365,9 +365,12 @@ def load_windpdf(s, tslice=slice(150, 500), both=True):
     dt = 0.1
     mstar = 1 / np.sum(s.pop_synth["snrate"] * dt)
     field = "sfr40"
-    h = s.read_hst()
-    sfr_avg = h[field].loc[tslice].mean()
-    sfr_std = h[field].loc[tslice].std()
+    if hasattr(s, "hst"):
+        h = s.hst
+    else:
+        h = s.make_monotonic(s.read_hst())
+    sfr_avg = h[field].loc[s.tslice].mean()
+    sfr_std = h[field].loc[s.tslice].std()
     ref_flux = dict(
         mflux=sfr_avg / mstar * mstar,
         eflux=sfr_avg / mstar * 1.0e51,
@@ -399,7 +402,6 @@ def load_windpdf(s, tslice=slice(150, 500), both=True):
 
 def load_velocity_pdfs(
     sim,
-    tslice=slice(150, 500),
     xf="T",
     vel_fields=["velocity3", "0-Vs3", "0-Vd3", "0-Veff3", "Vtotz"],
 ):
@@ -409,7 +411,7 @@ def load_velocity_pdfs(
     vel_pdfs = dict()
 
     for num in sim.nums:
-        if (num < tslice.start) or (num > tslice.stop):
+        if (num < sim.tslice.start) or (num > sim.tslice.stop):
             pass
         for yf in vel_fields:
             if yf not in vel_pdfs:

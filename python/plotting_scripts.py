@@ -578,7 +578,7 @@ def plot_pressure_tz(simgroup, gr, ph="wc", kpc=True, savefig=True):
 # plotting functions time-averaged z-profiles
 # ----------------------------------------
 def plot_pressure_z(
-    simgroup, gr, tslice=slice(150, 500), ph="wc", kpc=True, savefig=True
+    simgroup, gr,  ph="wc", kpc=True, savefig=True
 ):
     """Plot pressure components vs. height with exponential fits.
 
@@ -601,7 +601,7 @@ def plot_pressure_z(
     for i, m in enumerate(models):
         s = sims[m]
         c = model_color[m]
-        dset = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
+        dset = s.zp_ph.sel(time=s.tslice).sum(dim="vz_dir")
         dset = update_stress(s, dset)
         rho = (dset["rho"].sel(phase=ph) / dset["area"].sel(phase=ph)).mean(dim="time")
         print(
@@ -668,7 +668,7 @@ def plot_pressure_z(
 
 
 def plot_volume_fraction_z(
-    simgroup, gr, tslice=slice(150, 500), kpc=True, savefig=True
+    simgroup, gr,  kpc=True, savefig=True
 ):
     """Plot phase volume fractions as a function of height.
 
@@ -696,7 +696,7 @@ def plot_volume_fraction_z(
     for i, m in enumerate(models):
         s = sims[m]
 
-        dset = s.zprof.sum(dim="vz_dir").sel(time=tslice)
+        dset = s.zprof.sum(dim="vz_dir").sel(time=s.tslice)
         plt.sca(axes[i])
         for ph, color, label in zip(
             [["CNM", "UNM"], "WNM", "WHIM", "HIM"],
@@ -722,7 +722,7 @@ def plot_profile_frac_z(
     vz_dir=None,
     field="rho",
     line="median",
-    tslice=slice(150, 500),
+
     kpc=True,
     savefig=True,
 ):
@@ -760,16 +760,16 @@ def plot_profile_frac_z(
     for i, m in enumerate(models):
         s = sims[m]
         if vz_dir is None:
-            dset = s.zprof.sum(dim="vz_dir").sel(time=tslice)
+            dset = s.zprof.sum(dim="vz_dir").sel(time=s.tslice)
         else:
             dset_upper = (
                 s.zprof.sel(vz_dir=vz_dir)
-                .sel(time=tslice)
+                .sel(time=s.tslice)
                 .sel(z=slice(0, s.domain["re"][2]))
             )
             dset_lower = (
                 s.zprof.sel(vz_dir=-vz_dir)
-                .sel(time=tslice)
+                .sel(time=s.tslice)
                 .sel(z=slice(s.domain["le"][2], 0))
             )
             dset = xr.concat([dset_lower, dset_upper], dim="z")
@@ -797,7 +797,7 @@ def plot_profile_frac_z(
 
 
 def plot_profile_z(
-    simgroup, gr, field="rho", tslice=slice(150, 500), kpc=True, savefig=True
+    simgroup, gr, field="rho",  kpc=True, savefig=True
 ):
     """Plot vertical profiles of a field by phase for a simulation group.
 
@@ -830,7 +830,7 @@ def plot_profile_z(
     for i, m in enumerate(models):
         s = sims[m]
 
-        dset = s.zprof.sum(dim="vz_dir").sel(time=tslice)
+        dset = s.zprof.sum(dim="vz_dir").sel(time=s.tslice)
         plt.sca(axes[i])
         for ph, color, label in zip(
             [["CNM", "UNM"], "WNM", "WHIM", "HIM"],
@@ -853,7 +853,7 @@ def plot_profile_z(
 
 
 def plot_fraction_z(
-    simgroup, gr, field="rho", tslice=slice(150, 500), kpc=True, savefig=True
+    simgroup, gr, field="rho",  kpc=True, savefig=True
 ):
     """Plot fractional profiles of a field by phase for a simulation group.
 
@@ -883,7 +883,7 @@ def plot_fraction_z(
     for i, m in enumerate(models):
         s = sims[m]
 
-        dset = s.zprof.sum(dim="vz_dir").sel(time=tslice)
+        dset = s.zprof.sum(dim="vz_dir").sel(time=s.tslice)
         plt.sca(axes[i])
         for ph, color, label in zip(
             [["CNM", "UNM"], "WNM", "WHIM", "HIM"],
@@ -906,7 +906,7 @@ def plot_fraction_z(
 
 
 def plot_fraction_ph_z(
-    simgroup, gr, field="rho", tslice=slice(150, 500), kpc=True, savefig=True
+    simgroup, gr, field="rho",  kpc=True, savefig=True
 ):
     """Plot fractional profiles separated by aggregated phase categories.
 
@@ -935,7 +935,7 @@ def plot_fraction_ph_z(
         s = sims[m]
         name = model_name[m]
         color = model_color[m]
-        dset = s.zp_ph.sum(dim="vz_dir").sel(time=tslice)
+        dset = s.zp_ph.sum(dim="vz_dir").sel(time=s.tslice)
         for ax, ph in zip(axes, ["wc", "hot"]):
             plt.sca(ax)
             plot_zprof_frac(
@@ -954,7 +954,7 @@ def plot_fraction_ph_z(
     return fig
 
 
-def plot_rho_z(simgroup, gr, tslice=slice(150, 500), kpc=True, savefig=True):
+def plot_rho_z(simgroup, gr,  kpc=True, savefig=True):
     """Plot density and pressure/energy profiles for warm and hot phases.
 
     Creates a 4x2 grid of plots showing density, kinetic, thermal, and
@@ -966,8 +966,6 @@ def plot_rho_z(simgroup, gr, tslice=slice(150, 500), kpc=True, savefig=True):
         Nested dictionary of grouped simulations
     gr : str
         Group name to plot
-    tslice : slice
-        Time slice to select (default=slice(150, 500))
     kpc : bool
         If True, convert z coordinates to kpc (default=True)
     savefig : bool
@@ -983,7 +981,7 @@ def plot_rho_z(simgroup, gr, tslice=slice(150, 500), kpc=True, savefig=True):
     for i, m in enumerate(models):
         s = sims[m]
         color = model_color[m]
-        dset = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
+        dset = s.zp_ph.sel(time=s.tslice).sum(dim="vz_dir")
         dset = update_stress(s, dset)
         # dset["Etot"] *= (s.u.energy_density/ac.k_B).cgs.value
         for axs, ph in zip(axes.T, ["wc", "hot"]):
@@ -1009,7 +1007,7 @@ def plot_rho_z(simgroup, gr, tslice=slice(150, 500), kpc=True, savefig=True):
     return fig
 
 
-def plot_rhov_z(simgroup, gr, tslice=slice(150, 500), kpc=True, savefig=True):
+def plot_rhov_z(simgroup, gr,  kpc=True, savefig=True):
     """Plot density and velocity profiles for warm cloud phase.
 
     Creates a 4-panel plot showing density, vertical velocity, Alfvén
@@ -1021,8 +1019,6 @@ def plot_rhov_z(simgroup, gr, tslice=slice(150, 500), kpc=True, savefig=True):
         Nested dictionary of grouped simulations
     gr : str
         Group name to plot
-    tslice : slice
-        Time slice to select (default=slice(150, 500))
     kpc : bool
         If True, convert z coordinates to kpc (default=True)
     savefig : bool
@@ -1036,7 +1032,7 @@ def plot_rhov_z(simgroup, gr, tslice=slice(150, 500), kpc=True, savefig=True):
     for i, m in enumerate(models):
         s = sims[m]
         c = model_color[m]
-        dset = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
+        dset = s.zp_ph.sel(time=s.tslice).sum(dim="vz_dir")
 
         plt.sca(axes[0])
         ph = "wc"
@@ -1071,7 +1067,7 @@ def plot_rhov_z(simgroup, gr, tslice=slice(150, 500), kpc=True, savefig=True):
 
 
 def plot_cr_velocity_sigma_z(
-    simgroup, gr, tslice=slice(150, 500), kpc=True, savefig=True
+    simgroup, gr,  kpc=True, savefig=True
 ):
     """Plot CR transport properties and energy densities for a simulation group.
 
@@ -1084,8 +1080,6 @@ def plot_cr_velocity_sigma_z(
         Nested dictionary of grouped simulations
     gr : str
         Group name to plot
-    tslice : slice
-        Time slice to select (default=slice(150, 500))
     kpc : bool
         If True, convert z coordinates to kpc (default=True)
     savefig : bool
@@ -1099,7 +1093,7 @@ def plot_cr_velocity_sigma_z(
     for m, s in sims.items():
         color = model_color[m]
         if s.options["cosmic_ray"]:
-            dset = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
+            dset = s.zp_ph.sel(time=s.tslice).sum(dim="vz_dir")
             dset["cs"] = np.sqrt(dset["press"] / dset["dens"])
             if "0-rhoCcr2" in dset:
                 dset["Cc"] = np.sqrt(dset["0-rhoCcr2"] / dset["dens"])
@@ -1216,7 +1210,7 @@ def plot_cr_velocity_sigma_z(
 
 
 def plot_flux_z(
-    simgroup, gr, both=True, vz_dir=None, tslice=slice(150, 500), kpc=True, savefig=True
+    simgroup, gr, both=True, vz_dir=None,  kpc=True, savefig=True
 ):
     """Plot mass, pressure, and energy fluxes for a simulation group.
 
@@ -1233,8 +1227,6 @@ def plot_flux_z(
         If True, fold both hemispheres (default=True)
     vz_dir : int or None
         Filter by vertical velocity direction (default=None for both)
-    tslice : slice
-        Time slice to select (default=slice(150, 500))
     kpc : bool
         If True, convert z coordinates to kpc (default=True)
     savefig : bool
@@ -1247,7 +1239,7 @@ def plot_flux_z(
     icrmhd = 0
     for m, s in sims.items():
         color = model_color[m]
-        dset_ = s.zp_ph.sel(time=tslice)
+        dset_ = s.zp_ph.sel(time=s.tslice)
         dset = update_flux(s, dset_, vz_dir=vz_dir, both=both)
         if vz_dir is not None:
             dset_outin = [dset]
@@ -1358,7 +1350,7 @@ def plot_flux_z(
 
 
 def plot_loading_z(
-    simgroup, gr, vz_dir=None, both=True, tslice=slice(150, 500), kpc=True, savefig=True
+    simgroup, gr, vz_dir=None, both=True,  kpc=True, savefig=True
 ):
     """Plot flux loading (normalized by reference star formation) for a simulation group.
 
@@ -1375,8 +1367,6 @@ def plot_loading_z(
         Filter by vertical velocity direction (default=None for both)
     both : bool
         If True, fold both hemispheres (default=True)
-    tslice : slice
-        Time slice to select (default=slice(150, 500))
     kpc : bool
         If True, convert z coordinates to kpc (default=True)
     savefig : bool
@@ -1393,9 +1383,12 @@ def plot_loading_z(
         dt = 0.1
         mstar = 1 / np.sum(s.pop_synth["snrate"] * dt)
         field = "sfr40"
-        h = s.read_hst()
-        sfr_avg = h[field].loc[tslice].mean()
-        sfr_std = h[field].loc[tslice].std()
+        if hasattr(s, "hst"):
+            h = s.hst
+        else:
+            h = s.make_monotonic(s.read_hst())
+        sfr_avg = h[field].loc[s.tslice].mean()
+        sfr_std = h[field].loc[s.tslice].std()
         ref_flux = dict(
             mflux=sfr_avg / mstar * mstar,
             pflux_MHD=sfr_avg / mstar * 1.25e5,
@@ -1406,7 +1399,7 @@ def plot_loading_z(
         )
 
         color = model_color[m]
-        dset_ = s.zp_ph.sel(time=tslice)
+        dset_ = s.zp_ph.sel(time=s.tslice)
         dset = update_flux(s, dset_, vz_dir=vz_dir, both=both)
         if vz_dir is not None:
             dset_outin = [dset]
@@ -1529,7 +1522,7 @@ def plot_loading_z(
 
 
 def plot_area_mass_fraction_z(
-    simgroup, gr, tslice=slice(150, 500), kpc=True, savefig=True
+    simgroup, gr,  kpc=True, savefig=True
 ):
     """Plot area and density fractions by phase with outflow contributions.
 
@@ -1542,8 +1535,6 @@ def plot_area_mass_fraction_z(
         Nested dictionary of grouped simulations
     gr : str
         Group name to plot
-    tslice : slice
-        Time slice to select (default=slice(150, 500))
     kpc : bool
         If True, convert z coordinates to kpc (default=True)
     savefig : bool
@@ -1682,7 +1673,7 @@ def plot_vertical_proflies_separate(simgroup, gr):
 
 
 def plot_velocity_z(
-    simgroup, gr, ph="wc", tslice=slice(150, 500), kpc=True, savefig=True
+    simgroup, gr, ph="wc",  kpc=True, savefig=True
 ):
     """Plot vertical velocity profiles for a simulation group.
 
@@ -1709,15 +1700,15 @@ def plot_velocity_z(
     for i, m in enumerate(models):
         s = sims[m]
         c = model_color[m]
-        dnet = s.zp_ph.sel(time=tslice, z=slice(0, s.zp_ph.z.max())).sum(dim="vz_dir")
-        dout = s.zp_ph.sel(time=tslice, z=slice(0, s.zp_ph.z.max()), vz_dir=1)
+        dnet = s.zp_ph.sel(time=s.tslice, z=slice(0, s.zp_ph.z.max())).sum(dim="vz_dir")
+        dout = s.zp_ph.sel(time=s.tslice, z=slice(0, s.zp_ph.z.max()), vz_dir=1)
 
         if s.options["cosmic_ray"] and ("0-Veff3" not in dnet):
-            crzp_net = s.zp_pp_ph.sel(time=tslice, z=slice(0, s.zp_ph.z.max())).sum(
+            crzp_net = s.zp_pp_ph.sel(time=s.tslice, z=slice(0, s.zp_ph.z.max())).sum(
                 dim="vz_dir"
             )
             crzp_out = s.zp_pp_ph.sel(
-                time=tslice, z=slice(0, s.zp_ph.z.max()), vz_dir=1
+                time=s.tslice, z=slice(0, s.zp_ph.z.max()), vz_dir=1
             )
         plt.sca(axs[0])
         plot_zprof_field(
@@ -1840,7 +1831,7 @@ def plot_velocity_z(
 
 
 def plot_kappa_z(
-    simgroup, gr, phases=["wc", "hot"], tslice=slice(150, 500), kpc=True, savefig=True
+    simgroup, gr, phases=["wc", "hot"],  kpc=True, savefig=True
 ):
     """Plot CR diffusion coefficient and inverse (scattering rate) profiles.
 
@@ -1856,8 +1847,6 @@ def plot_kappa_z(
         Group name to plot
     phases : list
         Phase names to plot (default=['wc', 'hot'])
-    tslice : slice
-        Time slice to select (default=slice(150, 500))
     kpc : bool
         If True, convert z coordinates to kpc (default=True)
     savefig : bool
@@ -1879,9 +1868,9 @@ def plot_kappa_z(
             if "0-Fd_B" not in s.zprof:
                 # use post-processing zprof
                 if phases[0] == "wc" and phases[1] == "hot":
-                    dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
+                    dset_pp = s.zp_pp_ph.sel(time=s.tslice).sum(dim="vz_dir")
                 else:
-                    dset_pp = s.zp_pp.sel(time=tslice).sum(dim="vz_dir")
+                    dset_pp = s.zp_pp.sel(time=s.tslice).sum(dim="vz_dir")
                 dset_pp["kappa_eff"] = (
                     dset_pp["Fcr_diff_parallel"]
                     / dset_pp["GradPcr_parallel"]
@@ -1894,9 +1883,9 @@ def plot_kappa_z(
                 ) / (s.u.cm**2 / s.u.s)
             else:
                 if phases[0] == "wc" and phases[1] == "hot":
-                    dset_pp = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
+                    dset_pp = s.zp_ph.sel(time=s.tslice).sum(dim="vz_dir")
                 else:
-                    dset_pp = s.zprof.sel(time=tslice).sum(dim="vz_dir")
+                    dset_pp = s.zprof.sel(time=s.tslice).sum(dim="vz_dir")
                 dset_pp["kappa_eff"] = (
                     dset_pp["0-Fd_B"] / dset_pp["0-GradPc_B"] * dset_pp["area"]
                 ) * (s.u.cm**2 / s.u.s)
@@ -1946,7 +1935,7 @@ def plot_gainloss_z_each(
     s,
     m,
     phases=["wc", "hot"],
-    tslice=slice(150, 500),
+
     grav_work=False,
     kpc=True,
     savefig=True,
@@ -1965,8 +1954,6 @@ def plot_gainloss_z_each(
         Group name to plot
     phases : list
         Phase names to plot (default=['wc', 'hot'])
-    tslice : slice
-        Time slice to select (default=slice(150, 500))
     kpc : bool
         If True, convert z coordinates to kpc (default=True)
     savefig : bool
@@ -1996,12 +1983,12 @@ def plot_gainloss_z_each(
 
     if phases[0] == "wc" and phases[1] == "hot":
         if is_zp_pp:
-            dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
-        dset = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
+            dset_pp = s.zp_pp_ph.sel(time=s.tslice).sum(dim="vz_dir")
+        dset = s.zp_ph.sel(time=s.tslice).sum(dim="vz_dir")
     else:
         if is_zp_pp:
-            dset_pp = s.zp_pp.sel(time=tslice).sum(dim="vz_dir")
-        dset = s.zprof.sel(time=tslice).sum(dim="vz_dir")
+            dset_pp = s.zp_pp.sel(time=s.tslice).sum(dim="vz_dir")
+        dset = s.zprof.sel(time=s.tslice).sum(dim="vz_dir")
     if s.options["cosmic_ray"]:
         if is_zp_pp:
             dset_pp["cr_heating"] = (
@@ -2085,7 +2072,7 @@ def plot_gainloss_z(
     gr,
     phases=["wc", "hot"],
     grav_work=False,
-    tslice=slice(150, 500),
+
     kpc=True,
     savefig=True,
 ):
@@ -2103,8 +2090,6 @@ def plot_gainloss_z(
         Group name to plot
     phases : list
         Phase names to plot (default=['wc', 'hot'])
-    tslice : slice
-        Time slice to select (default=slice(150, 500))
     kpc : bool
         If True, convert z coordinates to kpc (default=True)
     savefig : bool
@@ -2140,12 +2125,12 @@ def plot_gainloss_z(
         is_zp_pp = hasattr(s, "zp_pp")
         if phases[0] == "wc" and phases[1] == "hot":
             if is_zp_pp:
-                dset_pp = s.zp_pp_ph.sel(time=tslice).sum(dim="vz_dir")
-            dset = s.zp_ph.sel(time=tslice).sum(dim="vz_dir")
+                dset_pp = s.zp_pp_ph.sel(time=s.tslice).sum(dim="vz_dir")
+            dset = s.zp_ph.sel(time=s.tslice).sum(dim="vz_dir")
         else:
             if is_zp_pp:
-                dset_pp = s.zp_pp.sel(time=tslice).sum(dim="vz_dir")
-            dset = s.zprof.sel(time=tslice).sum(dim="vz_dir")
+                dset_pp = s.zp_pp.sel(time=s.tslice).sum(dim="vz_dir")
+            dset = s.zprof.sel(time=s.tslice).sum(dim="vz_dir")
         if s.options["cosmic_ray"]:
             if is_zp_pp:
                 dset_pp["cr_heating"] = (
@@ -2308,7 +2293,7 @@ def plot_momentum_transfer_z(
     gr,
     show_option=1,
     zmin=1000,
-    tslice=slice(150, 500),
+
     kpc=True,
     savefig=True,
 ):
@@ -2330,8 +2315,6 @@ def plot_momentum_transfer_z(
         3 -- (F-W) for wc, Pcr for wc and hot for (F-W)+Pcr
     zmin : float
         Minimum z height to consider (default=1000)
-    tslice : slice
-        Time slice to select (default=slice(150, 500))
     kpc : bool
         If True, convert z coordinates to kpc (default=True)
     savefig : bool
@@ -2348,7 +2331,7 @@ def plot_momentum_transfer_z(
         color = model_color[m]
 
         # read zprof/merge velocity
-        dset = s.zp_ph.sum(dim="vz_dir").sel(time=tslice)
+        dset = s.zp_ph.sum(dim="vz_dir").sel(time=s.tslice)
         dset = update_stress(s, dset)
 
         # setup gzext
@@ -2634,7 +2617,7 @@ def plot_mass_fraction_t(simgroup, gr, zslice=slice(-50, 50), savefig=True):
     return fig
 
 
-def plot_history(simgroup, gr, tslice=slice(150, 500), tmax=None, savefig=True):
+def plot_history(simgroup, gr, tmax=500, savefig=True):
     """Plot simulation history (star formation rate and other quantities).
 
     Creates a 2-panel plot showing star formation rate and vertical momentum
@@ -2646,13 +2629,9 @@ def plot_history(simgroup, gr, tslice=slice(150, 500), tmax=None, savefig=True):
         Nested dictionary of grouped simulations
     gr : str
         Group name to plot
-    tslice : slice
-        Time slice to select (default=slice(150, 500))
     savefig : bool
         If True, save figure (default=True)
     """
-    if tmax is None:
-        tmax = tslice.stop
     sims = simgroup[gr]
     fig, axes = plt.subplots(
         1, 2, figsize=(8, 2.5), sharex=True, constrained_layout=True
@@ -2665,13 +2644,12 @@ def plot_history(simgroup, gr, tslice=slice(150, 500), tmax=None, savefig=True):
         name = model_name[m]
         h = s.hst
         plt.plot(h["time"], h[field], label=name, color=color)
-
-        avg = h[field].loc[tslice].mean()
-        std = h[field].loc[tslice].std()
+        avg = h[field].loc[s.tslice].mean()
+        std = h[field].loc[s.tslice].std()
         plt.axhline(
             avg,
-            xmin=tslice.start / tmax,
-            xmax=tslice.stop / tmax,
+            xmin=s.tslice.start / tmax,
+            xmax=s.tslice.stop / tmax,
             color=color,
             lw=1,
             ls="--",
@@ -2679,8 +2657,8 @@ def plot_history(simgroup, gr, tslice=slice(150, 500), tmax=None, savefig=True):
         plt.axhspan(
             avg - std,
             avg + std,
-            xmin=tslice.start / tmax,
-            xmax=tslice.stop / tmax,
+            xmin=s.tslice.start / tmax,
+            xmax=s.tslice.stop / tmax,
             color=color,
             alpha=0.1,
             lw=0,
@@ -2701,7 +2679,7 @@ def plot_history(simgroup, gr, tslice=slice(150, 500), tmax=None, savefig=True):
             plt.plot(
                 h["time"], h[field], label=label if i == 0 else None, ls=ls, color=color
             )
-            print(name, field, h[field].loc[tslice].min(), h[field].loc[tslice].max())
+            print(name, field, h[field].loc[s.tslice].min(), h[field].loc[s.tslice].max())
             i += 1
     plt.sca(axes[0])
     plt.ylabel(r"$\Sigma_{\rm SFR}\,[M_\odot\,{\rm kpc^{-2}\,yr^{-1}}]$")
@@ -2725,7 +2703,7 @@ def plot_history(simgroup, gr, tslice=slice(150, 500), tmax=None, savefig=True):
 
 
 def plot_pressure_t(
-    simgroup, gr, ph="wc", tslice=slice(150, 500), zslice=slice(-50, 50), savefig=True
+    simgroup, gr, ph="wc",  zslice=slice(-50, 50), savefig=True
 ):
     """Plot pressure components vs. time in the disk midplane.
 
@@ -2774,10 +2752,8 @@ def plot_pressure_t(
             #              xycoords="axes fraction",ha="left",va="top")
             plt.title(label)
             plt.yscale("log")
-            plt.axvline(tslice.start, color="k", ls=":")
             plt.ylim(5.0e2, 1.0e5)
             plt.xlabel(r"$t\,[{\rm Myr}]$")
-            plt.xlim(0, tslice.stop)
 
     plt.sca(axes[1])
     plt.legend(fontsize="small")
@@ -2789,7 +2765,7 @@ def plot_pressure_t(
 
 
 def plot_vertical_equilibrium_t(
-    simgroup, gr, ph="wc", exclude=[], zmax=1000, tslice=slice(150, 500), savefig=True
+    simgroup, gr, ph="wc", exclude=[], zmax=1000,  savefig=True
 ):
     """Plot vertical pressure equilibrium evolution over time.
 
@@ -2874,7 +2850,6 @@ def plot_vertical_equilibrium_t(
         # plt.yscale("log")
         # plt.ylim(5.0e2, 5.0e4)
         plt.xlabel(r"$t\,[{\rm Myr}]$")
-    plt.xlim(0, tslice.stop)
     plt.sca(axes[0])
     plt.ylabel(  # r"$\langle P_{\rm tot} \rangle^{\rm wc}/f_A^{\rm wc}$"
         # r"$\,\langle \mathcal{W}_{\rm tot}\rangle^{\rm wc}$"
@@ -3056,7 +3031,7 @@ def plot_voutpdf(simgroup, gr, kpc=True, savefig=True):
     return fig
 
 
-def plot_velocity_pdfs(sim, m, wf="pok_cr", tslice=slice(150, 500), savefig=True):
+def plot_velocity_pdfs(sim, m, wf="pok_cr",  savefig=True):
     name = model_name[m]
     vel_pdfs = sim.vel_pdfs
     vel_fields = list(vel_pdfs.keys())
@@ -3078,8 +3053,8 @@ def plot_velocity_pdfs(sim, m, wf="pok_cr", tslice=slice(150, 500), savefig=True
     }
 
     for vf, ax in zip(vel_fields, axes.flat):
-        pdf = vel_pdfs[vf].sel(time=tslice).mean(dim="time")
-        pok_cr_mean = vel_pdfs[vf][wf].sel(time=tslice).mean(dim="time")
+        pdf = vel_pdfs[vf].sel(time=sim.tslice).mean(dim="time")
+        pok_cr_mean = vel_pdfs[vf][wf].sel(time=sim.tslice).mean(dim="time")
         plt.sca(ax)
         plt.pcolormesh(
             pdf["log_T"],
@@ -3090,7 +3065,7 @@ def plot_velocity_pdfs(sim, m, wf="pok_cr", tslice=slice(150, 500), savefig=True
         )
     plt.sca(axes[-1, -1])
     for vf, ax in zip(vel_fields, axes.flat):
-        pdf = vel_pdfs[vf].sel(time=tslice).mean(dim="time")
+        pdf = vel_pdfs[vf].sel(time=sim.tslice).mean(dim="time")
         vf_ = f"log_{vf}"
         # get mean in linear space
         vz = (pdf[f"{wf}-pdf"] * 10.0 ** pdf[vf_]).sum(dim=vf_) / (
