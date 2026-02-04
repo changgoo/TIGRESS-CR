@@ -94,6 +94,20 @@ def plot_injection(s, tmin=150, tmax=500, kpc=True, **kwargs):
     plt.plot(zcc, crinj.to("erg/(s*cm3)"), **kwargs)
 
 
+def get_cumsum_both(s,zprof):
+    upper = zprof.sel(z=slice(0, s.domain["re"][2])).cumsum(dim="z")
+    lower = zprof.sel(z=slice(s.domain["le"][2], 0)).isel(z=slice(None, None, -1)).cumsum(dim="z")
+    lower = lower.assign_coords(z=lower.z * (-1))
+    return lower + upper
+
+
+def get_cumsum_both_reverse(s,zprof):
+    upper = zprof.sel(z=slice(0, s.domain["re"][2])).isel(z=slice(None, None, -1)).cumsum(dim="z").isel(z=slice(None, None, -1))
+    lower = zprof.sel(z=slice(s.domain["le"][2], 0)).cumsum(dim="z")
+    lower = lower.assign_coords(z=lower.z * (-1))
+    return lower + upper
+
+
 # ----------------------------------------
 # definition of base plotting functions
 # ----------------------------------------
@@ -368,7 +382,7 @@ def plot_massflux_tz(simgroup, gr, kpc=True, ph="wc", savefig=True):
             ax=axes[0, :],
             pad=0.02,
             label=f"$\\mathcal{{F}}_{{M}}^{{\\rm {ph},out}}$"
-            r"$\,[{\rm M_\odot\,kpc^{-2}\,yr}]$",
+            r"$\,[{\rm M_\odot\,kpc^{-2}\,yr^{-1}}]$",
         )
         cbar_in = plt.colorbar(
             im_in,
@@ -376,7 +390,7 @@ def plot_massflux_tz(simgroup, gr, kpc=True, ph="wc", savefig=True):
             ax=axes[1, :],
             pad=0.02,
             label=f"$\\mathcal{{F}}_{{M}}^{{\\rm {ph},in}}$"
-            r"$\,[{\rm M_\odot\,kpc^{-2}\,yr}]$",
+            r"$\,[{\rm M_\odot\,kpc^{-2}\,yr^{-1}}]$",
         )
         if savefig:
             plt.savefig(osp.join(fig_outdir, f"{gr}_massflux_tz.png"))
@@ -420,9 +434,9 @@ def plot_flux_tz(simgroup, gr, kpc=True, savefig=True):
             eflux_CR=LogNorm(1.0e42, 1.0e47),
         )
         label_unit = dict(
-            mflux=r"$\,[{\rm M_\odot\,kpc^{-2}\,yr}]$",
-            pflux_MHD=r"$\,[{\rm M_\odot\,km/s\,kpc^{-2}\,yr}]$",
-            eflux_MHD=r"$\,[{\rm erg\,kpc^{-2}\,yr}]$",
+            mflux=r"$\,[{\rm M_\odot\,kpc^{-2}\,yr^{-1}}]$",
+            pflux_MHD=r"$\,[{\rm M_\odot\,km/s\,kpc^{-2}\,yr^{-1}}]$",
+            eflux_MHD=r"$\,[{\rm erg\,kpc^{-2}\,yr^{-1}}]$",
         )
         cmap_outin = [cmr.ember, cmr.cosmic]
         for m, axs in zip(models, axes.T):
@@ -620,13 +634,14 @@ def plot_pressure_z(
             plt.sca(ax)
             if pfield in dset:
                 plot_zprof_field(
-                    dset, pfield, ph, kpc=kpc, color=c, label=model_name[m]
+                    dset, pfield, ph, kpc=kpc, color=c, label=model_name[m], line="median"
                 )
                 # fitting with an exponential profile
+                Pz = (dset[pfield].sel(phase=ph)/ dset["area"].sel(phase=ph)).median(dim="time")
 
-                Pz = dset[pfield].sel(phase=ph).mean(dim="time") / dset["area"].sel(
-                    phase=ph
-                ).mean(dim="time")
+                # Pz = dset[pfield].sel(phase=ph).mean(dim="time") / dset["area"].sel(
+                #     phase=ph
+                # ).mean(dim="time")
 
                 P = Pz.values
 
@@ -1673,7 +1688,7 @@ def plot_vertical_proflies_separate(simgroup, gr):
 
 
 def plot_velocity_z(
-    simgroup, gr, ph="wc",  kpc=True, savefig=True
+    simgroup, gr, ph="wc", upper=True, kpc=True, savefig=True
 ):
     """Plot vertical velocity profiles for a simulation group.
 
@@ -1695,14 +1710,25 @@ def plot_velocity_z(
     sims = simgroup[gr]
     models = list(sims.keys())
 
-    fig, axs = plt.subplots(4, 1, figsize=(3, 7), sharex=True, constrained_layout=True)
+    fig, axs = plt.subplots(4, 1, figsize=(4, 8), sharex=True, constrained_layout=True)
 
     for i, m in enumerate(models):
         s = sims[m]
         c = model_color[m]
-        dnet = s.zp_ph.sel(time=s.tslice, z=slice(0, s.zp_ph.z.max())).sum(dim="vz_dir")
-        dout = s.zp_ph.sel(time=s.tslice, z=slice(0, s.zp_ph.z.max()), vz_dir=1)
-
+        if ph in ["wc", "hot"]:
+            zpsel = s.zp_ph.sel(time=s.tslice)
+        else:
+            zpsel = s.zprof.sel(time=s.tslice)
+        if upper:
+            dnet = zpsel.sel(z=slice(0, zpsel.z.max())).sum(dim="vz_dir")
+            dout = zpsel.sel(z=slice(0, zpsel.z.max()), vz_dir=1)
+        else:
+            dnet = zpsel.sel(z=slice(zpsel.z.min(), 0)).sum(dim="vz_dir")
+            dnet = dnet.isel(z=slice(None, None, -1))
+            dnet = dnet.assign_coords(z=dnet.z * (-1))
+            dout = zpsel.sel(z=slice(zpsel.z.min(), 0), vz_dir=-1)
+            dout = dout.isel(z=slice(None, None, -1))
+            dout = dout.assign_coords(z=dout.z * (-1))
         if s.options["cosmic_ray"] and ("0-Veff3" not in dnet):
             crzp_net = s.zp_pp_ph.sel(time=s.tslice, z=slice(0, s.zp_ph.z.max())).sum(
                 dim="vz_dir"
@@ -2703,7 +2729,7 @@ def plot_history(simgroup, gr, tmax=500, savefig=True):
 
 
 def plot_pressure_t(
-    simgroup, gr, ph="wc",  zslice=slice(-50, 50), savefig=True
+    simgroup, gr, ph="wc", tmax=600, zslice=slice(-50, 50), savefig=True
 ):
     """Plot pressure components vs. time in the disk midplane.
 
@@ -2744,6 +2770,9 @@ def plot_pressure_t(
             pok = (dset[pfield] / dset["area"]).sel(phase=ph).mean(dim="z")
             plt.plot(pok.time * s.u.Myr, pok, label=name, color=color)
 
+            avg = pok.sel(time=s.tslice).mean().data
+            std = pok.sel(time=s.tslice).std().data
+            print(name, pfield, avg, std)
             if pfield.startswith("Pok_"):
                 label = f"$P_{{\\rm {lab}}}$"
             else:
@@ -2754,7 +2783,7 @@ def plot_pressure_t(
             plt.yscale("log")
             plt.ylim(5.0e2, 1.0e5)
             plt.xlabel(r"$t\,[{\rm Myr}]$")
-
+    plt.xlim(0,tmax)
     plt.sca(axes[1])
     plt.legend(fontsize="small")
     plt.sca(axes[0])
@@ -2765,7 +2794,7 @@ def plot_pressure_t(
 
 
 def plot_vertical_equilibrium_t(
-    simgroup, gr, ph="wc", exclude=[], zmax=1000,  savefig=True
+    simgroup, gr, ph="wc", exclude=[], tmax=500, zmax=1000,  savefig=True
 ):
     """Plot vertical pressure equilibrium evolution over time.
 
@@ -2825,7 +2854,12 @@ def plot_vertical_equilibrium_t(
         )
         delta = Ptot_mid - Ptot_1kpc
         plt.plot(dset.time * s.u.Myr, delta * 1.0e-4, label=r"$P_{\rm MHD}$")
-
+        avg = Ptot_mid.sel(time=s.tslice).mean().data
+        std = Ptot_mid.sel(time=s.tslice).std().data
+        print(name, "Ptot", avg, std)
+        avg = delta.sel(time=s.tslice).mean().data
+        std = delta.sel(time=s.tslice).std().data
+        print(name, "delta Ptot", avg, std)
         # total weight
         area_tot = s.domain["Lx"][0] * s.domain["Lx"][1]
         Wtot = dset["Wtot"] / area_tot
@@ -2836,7 +2870,12 @@ def plot_vertical_equilibrium_t(
         )
         delta = Wtot_mid - Wtot_1kpc
         plt.plot(dset.time * s.u.Myr, delta * 1.0e-4, label=r"$\mathcal{W}$")
-
+        avg = Wtot_mid.sel(time=s.tslice).mean().data
+        std = Wtot_mid.sel(time=s.tslice).std().data
+        print(name, "Wtot", avg, std)
+        avg = delta.sel(time=s.tslice).mean().data
+        std = delta.sel(time=s.tslice).std().data
+        print(name, "delta W", avg, std)
         # CR
         if s.options["cosmic_ray"]:
             Pcr = dset["Pok_cr"] / dset["area"]
@@ -2847,9 +2886,13 @@ def plot_vertical_equilibrium_t(
             )
             delta = Pcr_mid - Pcr_1kpc
             plt.plot(dset.time * s.u.Myr, delta * 1.0e-4, label=r"$P_{\rm cr}$")
+            avg = delta.sel(time=s.tslice).mean().data
+            std = delta.sel(time=s.tslice).std().data
+            print(name, "delta Pcr", avg, std)
         # plt.yscale("log")
         # plt.ylim(5.0e2, 5.0e4)
         plt.xlabel(r"$t\,[{\rm Myr}]$")
+        plt.xlim(0, tmax)
     plt.sca(axes[0])
     plt.ylabel(  # r"$\langle P_{\rm tot} \rangle^{\rm wc}/f_A^{\rm wc}$"
         # r"$\,\langle \mathcal{W}_{\rm tot}\rangle^{\rm wc}$"
@@ -2958,7 +3001,7 @@ def plot_voutpdf(simgroup, gr, kpc=True, savefig=True):
     nsims = len(sims)
     fig, axes = plt.subplots(
         2, nsims, figsize=(4*nsims, 6),
-        sharex="col", sharey="row", constrained_layout=True
+        sharex=True, sharey="row", constrained_layout=True
     )
     for (m, s), axs in zip(sims.items(), axes.T):
         outflux = s.outflux
@@ -3031,9 +3074,9 @@ def plot_voutpdf(simgroup, gr, kpc=True, savefig=True):
     return fig
 
 
-def plot_velocity_pdfs(sim, m, wf="pok_cr",  savefig=True):
+def plot_velocity_pdfs(sim, m, xf="T", wf="pok_cr", mean="linear", savefig=True):
     name = model_name[m]
-    vel_pdfs = sim.vel_pdfs
+    vel_pdfs = sim.vpdfs[xf]
     vel_fields = list(vel_pdfs.keys())
     fig, axes = plt.subplots(
         2,
@@ -3054,39 +3097,88 @@ def plot_velocity_pdfs(sim, m, wf="pok_cr",  savefig=True):
 
     for vf, ax in zip(vel_fields, axes.flat):
         pdf = vel_pdfs[vf].sel(time=sim.tslice).mean(dim="time")
-        pok_cr_mean = vel_pdfs[vf][wf].sel(time=sim.tslice).mean(dim="time")
+        if wf == "vol":
+            wf_mean = vel_pdfs[vf][wf]
+        else:
+            wf_mean = vel_pdfs[vf][wf].sel(time=sim.tslice).mean(dim="time")
         plt.sca(ax)
         plt.pcolormesh(
-            pdf["log_T"],
+            pdf[f"log_{xf}"],
             pdf[f"log_{vf}"],
-            pdf[f"{wf}-pdf"] / pok_cr_mean,
+            pdf[f"{wf}-pdf"] / wf_mean,
             norm=LogNorm(1.0e-5, 1),
-            cmap=cmr.fall_r,
+            cmap=cmr.neutral_r,
         )
     plt.sca(axes[-1, -1])
     for vf, ax in zip(vel_fields, axes.flat):
         pdf = vel_pdfs[vf].sel(time=sim.tslice).mean(dim="time")
         vf_ = f"log_{vf}"
         # get mean in linear space
-        vz = (pdf[f"{wf}-pdf"] * 10.0 ** pdf[vf_]).sum(dim=vf_) / (
-            pdf[f"{wf}-pdf"]
-        ).sum(dim=vf_)
-        vz = np.log10(vz)
+        if mean == "linear":
+            vz = (pdf[f"{wf}-pdf"] * 10.0 ** pdf[vf_]).sum(dim=vf_) / (
+                pdf[f"{wf}-pdf"]
+            ).sum(dim=vf_)
+            vz = np.log10(vz)
+        elif mean == "log":
+            # get mean in log space
+            vz = (pdf[f"{wf}-pdf"]*pdf[vf_]).sum(dim=vf_)/(pdf[f"{wf}-pdf"]).sum(dim=vf_)
+        else:
+            raise ValueError("mean must be 'linear' or 'log'")
         label = labels[vf]
         plt.sca(axes[-1, -1])
-        (l,) = plt.plot(vz["log_T"], vz, label=label)
+        (l,) = plt.plot(vz[f"log_{xf}"], vz, label=label)
         plt.sca(ax)
-        plt.plot(vz["log_T"], vz, color=l.get_color())
+        plt.plot(vz[f"log_{xf}"], vz, color=l.get_color())
         plt.annotate(label, (0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
         # # get mean in log space
         # vz=(pdf[f"{wf}-pdf"]*pdf[vf_]).sum(dim=vf_)/(pdf[f"{wf}-pdf"]).sum(dim=vf_)
         # plt.plot(vz["log_T"],vz,ls=":",color=l.get_color())
     plt.sca(axes[-1, -1])
     plt.legend(fontsize="x-small", loc=2, frameon=False)
-    plt.xlim(3, 7)
+    if xf == "T":
+        plt.xlim(2, 7)
+        plt.setp(axes[-1, :], xlabel=r"$\log T\,[{\rm K}]$")
+    elif xf == "nH":
+        plt.xlim(-4, 3)
+        plt.setp(axes[-1, :], xlabel=r"$\log n_{\rm H}\,[{\rm cm^{-3}}]$")
     plt.setp(axes[:, 0], ylabel=r"$\log v\,[{\rm km/s}]$")
-    plt.setp(axes[-1, :], xlabel=r"$\log T\,[{\rm K}]$")
+
 
     if savefig:
-        plt.savefig(osp.join(fig_outdir, f"{name}_velocity_pdfs.pdf"))
+        plt.savefig(osp.join(fig_outdir, f"{name}_velocity_{xf}_pdfs.png"))
     return fig
+
+def plot_crgain_cumsum(s, m, savefig=True):
+    fig = plt.figure(figsize=(4,3))
+    dset = s.zp_ph.sel(time=s.tslice).sum(dim="vz_dir")
+    dset["cr_work"] = (
+        dset["0-work_cr"] * (s.u.energy_density / s.u.time).cgs.value
+    )
+    tdec_scr = s.par["feedback"]["tdec_scr"] * s.u.Myr
+    dset["CRinj_rate"] = (dset["sCR"] / tdec_scr) * (
+        s.u.energy_density / s.u.time
+    ).cgs.value
+    dset["cr_loss"] = (
+        -dset["0-cooling_cr"] * (s.u.energy_density / s.u.time).cgs.value
+    )
+    crwork_cumsum = get_cumsum_both(s,dset["cr_work"])
+    crinj_cumsum = get_cumsum_both(s,dset["CRinj_rate"])
+    crloss_cumsum = get_cumsum_both(s,dset["cr_loss"])
+
+    sinj=crinj_cumsum.sum(dim="phase").mean(dim="time").sel(z=crinj_cumsum.z.max()).data
+
+    plot_zprof_mean_quantile(crwork_cumsum.sel(phase="hot")/sinj,color="C1")
+    plot_zprof_mean_quantile(crwork_cumsum.sum(dim="phase")/sinj,color="k",
+                             label=r"$F_{\rm in,W}$",quantile=False)
+    plot_zprof_mean_quantile(crinj_cumsum.sel(phase="hot")/sinj,color="C1",ls="--")
+    plot_zprof_mean_quantile(crinj_cumsum.sum(dim="phase")/sinj,color="k",ls="--",
+                             quantile=False,label=r"$F_{\rm in,SN}$")
+    plot_zprof_mean_quantile(crloss_cumsum.sum(dim="phase")/sinj,color="k",ls=":",
+                             label=r"$L_{\rm coll}$",quantile=False)
+    plt.legend(fontsize="small",frameon=False)
+    plt.ylabel(r"$F_{\rm in}(<|z|)/F_{\rm in,SN,total}$")
+    plt.xlabel(r"$|z|\,[{\rm kpc}]$")
+    plt.xlim(0,4)
+    if savefig:
+        plt.savefig(osp.join(fig_outdir,f"{m}_Edot_cumsum_norm.pdf"))
+

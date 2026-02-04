@@ -68,7 +68,7 @@ def plot_slice_xz(
         vx = f"{vec}1"
         vy = f"{vec}3"
         st = plt.streamplot(
-            slc.x.data, slc.z.data, slc[vx].data, slc[vy].data, **stream_kwargs
+            slc.x.data * lunit_factor, slc.z.data * lunit_factor, slc[vx].data, slc[vy].data, **stream_kwargs
         )
     plt.gca().set_aspect("equal", adjustable="box")
     plt.xlim(sim.domain["le"][0] * lunit_factor, sim.domain["re"][0] * lunit_factor)
@@ -821,6 +821,7 @@ def plot_slices_cr(
     kpc=False,
     novectors=False,
     time=False,
+    hideaxes=True,
     flist=[
         "sigma_para",
         "vmag",
@@ -852,11 +853,19 @@ def plot_slices_cr(
 
     # setup figure and axes grid
     unit_size = 1.5
+    if hideaxes:
+        xsize = unit_size * nf
+        ysize = unit_size * (1 + xz_ratio)
+    else:
+        xsize = unit_size * (nf + 2.0)
+        ysize = unit_size * (1.5 + xz_ratio)
     fig, axes = plt.subplots(
         2,
         nf,
-        figsize=(unit_size * nf, unit_size * (1 + xz_ratio)),
-        gridspec_kw=dict(height_ratios=[xz_ratio, 1]),
+        sharex="col",
+        sharey="row",
+        figsize=(xsize, ysize),
+        gridspec_kw=dict(height_ratios=[xz_ratio, 1],wspace=0.0,hspace=0.0),
         constrained_layout=True,
         num=0,
     )
@@ -896,7 +905,8 @@ def plot_slices_cr(
                 size="large",
             )
             ax.set_aspect("equal", adjustable="box")
-        ax.axis("off")
+        if hideaxes:
+            ax.axis("off")
         plt.axhline(0, color="k", ls=":")
 
     for ax, field in zip(axes[1, :], flist):
@@ -920,7 +930,8 @@ def plot_slices_cr(
         )
         if im is not None:
             ax.set_aspect("equal", adjustable="box")
-        ax.axis("off")
+        if hideaxes:
+            ax.axis("off")
 
     if time:
         tMyr = slc_xy.attrs["time"] * sim.u.Myr
@@ -933,6 +944,27 @@ def plot_slices_cr(
             fontsize="large",
             bbox=dict(boxstyle="round,pad=0.2", fc="w", ec="k", lw=1),
         )
+    if not hideaxes:
+        ax = axes[0, 0]
+        ax.set(ylabel=r"$z\,[{\rm kpc}]$")
+
+        ax = axes[0, -1]
+        ax.tick_params(labelbottom=False, labelleft=False, labelright=True)
+        ax.yaxis.tick_right()
+        ax.yaxis.set_label_position("right")
+        ax.set(ylabel=r"$z\,[{\rm kpc}]$")
+
+        ax = axes[1, 0]
+        ax.set(ylabel=r"$y\,[{\rm kpc}]$")
+
+        for ax in axes[1, :]:
+            ax.tick_params(labelbottom=False)
+
+        ax = axes[1, -1]
+        ax.tick_params(labelbottom=False, labelleft=False, labelright=True)
+        ax.yaxis.tick_right()
+        ax.yaxis.set_label_position("right")
+        ax.set(ylabel=r"$y\,[{\rm kpc}]$")
     if savefig:
         if sim.options["cosmic_ray"]:
             savdir = osp.join(sim.savdir, "cr_slices")

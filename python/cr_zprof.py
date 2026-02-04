@@ -405,14 +405,15 @@ def load_velocity_pdfs(
     xf="T",
     vel_fields=["velocity3", "0-Vs3", "0-Vd3", "0-Veff3", "Vtotz"],
 ):
-    if hasattr(sim, "vel_pdfs"):
-        return sim.vel_pdfs
+    if hasattr(sim, "vpdfs"):
+        if xf in sim.vpdfs:
+            return sim.vpdfs[xf]
 
     vel_pdfs = dict()
 
     for num in sim.nums:
         if (num < sim.tslice.start) or (num > sim.tslice.stop):
-            pass
+            continue
         for yf in vel_fields:
             if yf not in vel_pdfs:
                 vel_pdfs[yf] = []
@@ -431,8 +432,45 @@ def load_velocity_pdfs(
 
     for vf in vel_fields:
         vel_pdfs[vf] = xr.concat(vel_pdfs[vf], dim="time")
-    sim.vel_pdfs = vel_pdfs
+    if not hasattr(sim, "vpdfs"):
+        sim.vpdfs = dict()
+    sim.vpdfs[xf] = vel_pdfs
     return vel_pdfs
+
+
+def load_kappa_pdfs(
+    sim,
+    xf="T",
+    yf="kappa_para",
+):
+    if hasattr(sim, "kappa_pdfs"):
+        key = "-".join([xf, yf])
+        if key in sim.kappa_pdfs:
+            return sim.kappa_pdfs[key]
+    pdfs = []
+    for num in sim.nums:
+        if (num < sim.tslice.start) or (num > sim.tslice.stop):
+            continue
+
+        pdf = sim.get_jointpdf(
+            num,
+            "pdf",
+            filebase="-".join([xf, yf]),
+            xf=xf,
+            yf=yf,
+            wlist=[None, "nH", "pok_cr"],
+            xlim=(1, 9),
+            ylim=(25, 35),
+            force_override=False,
+        )
+        pdfs.append(pdf)
+
+    pdfs = xr.concat(pdfs, dim="time")
+    if not hasattr(sim, "kappa_pdfs"):
+        sim.kappa_pdfs = dict()
+    key = "-".join([xf, yf])
+    sim.kappa_pdfs[key] = pdfs
+    return pdfs
 
 
 def print_sim_table(sims):

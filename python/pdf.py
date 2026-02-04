@@ -215,6 +215,18 @@ class PDF:
                 ylim=(-35, -25),
                 force_override=force_override,
             )
+        for yf in ["pok_cr", "pok_mag"]:
+            pdf = self.get_jointpdf(
+                num,
+                "pdf",
+                filebase="-".join([xf, yf]),
+                xf=xf,
+                yf=yf,
+                wlist=[None, "nH"],
+                xlim=(-6, 4),
+                ylim=(-5, 10),
+                force_override=force_override,
+            )
 
     @LoadSim.Decorators.check_netcdf
     def get_windpdf(

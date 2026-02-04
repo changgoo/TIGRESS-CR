@@ -32,14 +32,18 @@ def load(model_dict,verbose=True):
     global simgroup, model_name, model_color
 
     # initialize simgroup
-    groups = ["vAi", "vAtot", "nost", "sigma28", "sigma29", "crmhd"]
+    groups = ["vAi", "vAtot", "nost", "sigma28", "sigma29", "crmhd-b", "crmhd"]
     for gr in groups:
         simgroup[gr] = dict()
 
     # categorize models
     mlist = []
     for k, d in model_dict.items():
-        sim = LoadSimTIGRESSPP(d, verbose=verbose)
+        try:
+            sim = LoadSimTIGRESSPP(d, verbose=verbose)
+        except:
+            print(f"Failed to load {k} at {d}")
+            continue
         par = sim.par
         base_split = sim.basename.split("-")
         model = []
@@ -81,6 +85,9 @@ def load(model_dict,verbose=True):
     # load data/ assign colors
     for group in simgroup:
         load_group(simgroup, group)
+        # for m, s in simgroup[group].items():
+        #     s.tslice = tslice[m]
+        #     load_windpdf(s, both=True)
         for i, k in enumerate(simgroup[group]):
             if k not in model_color:
                 model_color[k] = f"C{i}"

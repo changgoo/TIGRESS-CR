@@ -7,6 +7,7 @@ import warnings
 from matplotlib.colors import Normalize, LogNorm, SymLogNorm
 from matplotlib import cm
 import cmasher as cmr
+import colormaps as cmaps
 
 import astropy.units as au
 
@@ -227,16 +228,16 @@ class LoadSimTIGRESSPP(
         add_fields(self, dfi)
         # dfi.dfi["T"]["imshow_args"]["cmap"] = "Spectral_r"
         # dfi.dfi["T"]["imshow_args"]["norm"] = LogNorm(vmin=1e2, vmax=1e8)
-        dfi.dfi["nH"]["imshow_args"]["cmap"] = cmr.rainforest
+        dfi.dfi["nH"]["imshow_args"]["cmap"] = cmaps.rainforest
         dfi.dfi["nH"]["imshow_args"]["norm"] = LogNorm(vmin=1e-5, vmax=1e2)
         dfi.dfi["pok"]["imshow_args"]["norm"] = LogNorm(vmin=1e1, vmax=1e7)
         dfi.dfi["vz"]["imshow_args"]["norm"] = Normalize(vmin=-200, vmax=200)
         if self.options["newcool"]:
-            dfi.dfi["nHI"]["imshow_args"]["cmap"] = cmr.rainforest
+            dfi.dfi["nHI"]["imshow_args"]["cmap"] = cmaps.rainforest
             dfi.dfi["nHI"]["imshow_args"]["norm"] = LogNorm(vmin=1e-4, vmax=1e2)
-            dfi.dfi["nHII"]["imshow_args"]["cmap"] = cmr.rainforest
+            dfi.dfi["nHII"]["imshow_args"]["cmap"] = cmaps.rainforest
             dfi.dfi["nHII"]["imshow_args"]["norm"] = LogNorm(vmin=1e-4, vmax=1e2)
-            dfi.dfi["ne"]["imshow_args"]["cmap"] = cmr.rainforest
+            dfi.dfi["ne"]["imshow_args"]["cmap"] = cmaps.rainforest
             dfi.dfi["ne"]["imshow_args"]["norm"] = LogNorm(vmin=1e-4, vmax=1e2)
             dfi.dfi["xe"]["imshow_args"]["norm"] = Normalize(0, 1.2)
             dfi.dfi["xe"]["imshow_args"]["cmap"] = cm.ocean_r
@@ -271,7 +272,7 @@ class LoadSimTIGRESSPP(
             # adjust label, norm, etc
             for f in ["vmag", "Vcr_mag", "VAi_mag"]:
                 dfi.dfi[f]["imshow_args"]["norm"] = LogNorm(vmin=1, vmax=500)
-                dfi.dfi[f]["imshow_args"]["cmap"] = cmr.prinsenvlag_r
+                dfi.dfi[f]["imshow_args"]["cmap"] = cmaps.lapaz
         for k in dfi.dfi:
             sp = dfi.dfi[k]["label"].split(r"\;")
             if len(sp) == 2:
