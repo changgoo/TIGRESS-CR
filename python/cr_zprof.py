@@ -410,9 +410,9 @@ def load_velocity_pdfs(
             return sim.vpdfs[xf]
 
     vel_pdfs = dict()
-
+    dt = sim.par[f"output{sim.hdf5_outid[0]}"]["dt"]
     for num in sim.nums:
-        if (num < sim.tslice.start) or (num > sim.tslice.stop):
+        if (num < sim.tslice.start/dt) or (num > sim.tslice.stop/dt):
             continue
         for yf in vel_fields:
             if yf not in vel_pdfs:

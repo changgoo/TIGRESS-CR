@@ -299,7 +299,7 @@ def plot_zprof_frac(
 # ----------------------------------------
 # plotting functions space-time diagrams
 # ----------------------------------------
-def plot_massflux_tz(simgroup, gr, kpc=True, ph="wc", savefig=True):
+def plot_massflux_tz(simgroup, gr, tmin=0, tmax=500, kpc=True, ph="wc", savefig=True):
     """Create space-time diagram of mass flux for a simulation group.
 
     Plots outflow (top row) and inflow (bottom row) mass flux as
@@ -373,6 +373,7 @@ def plot_massflux_tz(simgroup, gr, kpc=True, ph="wc", savefig=True):
                 cmap=cmr.cosmic,
                 norm=LogNorm(1.0e-5, 1.0e-1),
             )
+            plt.xlim(tmin, tmax)
         plt.setp(axes[:, 0], ylabel=r"$z\, [{\rm kpc}]$")
         plt.setp(axes[1, :], xlabel=r"$t\, [{\rm Myr}]$")
         # plt.ylim(bottom=0)
@@ -2643,7 +2644,7 @@ def plot_mass_fraction_t(simgroup, gr, zslice=slice(-50, 50), savefig=True):
     return fig
 
 
-def plot_history(simgroup, gr, tmax=500, savefig=True):
+def plot_history(simgroup, gr, tmin=0, tmax=500, savefig=True):
     """Plot simulation history (star formation rate and other quantities).
 
     Creates a 2-panel plot showing star formation rate and vertical momentum
@@ -2674,8 +2675,8 @@ def plot_history(simgroup, gr, tmax=500, savefig=True):
         std = h[field].loc[s.tslice].std()
         plt.axhline(
             avg,
-            xmin=s.tslice.start / tmax,
-            xmax=s.tslice.stop / tmax,
+            xmin=(s.tslice.start - tmin) / (tmax-tmin),
+            xmax=(s.tslice.stop - tmin) / (tmax-tmin),
             color=color,
             lw=1,
             ls="--",
@@ -2683,8 +2684,8 @@ def plot_history(simgroup, gr, tmax=500, savefig=True):
         plt.axhspan(
             avg - std,
             avg + std,
-            xmin=s.tslice.start / tmax,
-            xmax=s.tslice.stop / tmax,
+            xmin=(s.tslice.start - tmin) / (tmax-tmin),
+            xmax=(s.tslice.stop - tmin) / (tmax-tmin),
             color=color,
             alpha=0.1,
             lw=0,
@@ -2702,8 +2703,13 @@ def plot_history(simgroup, gr, tmax=500, savefig=True):
             color = model_color[m]
             name = model_name[m]
             h = s.hst
+            x = h["time"]
+            y = h[field]
+            if field =="Sigma_out":
+                y0 = np.interp(tmin, x, y)
+                y = y - y0
             plt.plot(
-                h["time"], h[field], label=label if i == 0 else None, ls=ls, color=color
+                x, y, label=label if i == 0 else None, ls=ls, color=color
             )
             print(name, field, h[field].loc[s.tslice].min(), h[field].loc[s.tslice].max())
             i += 1
@@ -2720,7 +2726,7 @@ def plot_history(simgroup, gr, tmax=500, savefig=True):
     plt.ylim(0, 15)
     plt.legend(fontsize="x-small")
     plt.xlabel(r"$t\,[{\rm Myr}]$")
-    plt.xlim(0, tmax)
+    plt.xlim(tmin, tmax)
     plt.annotate("(b)", xy=(0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
     if savefig:
         plt.savefig(osp.join(fig_outdir, f"{gr}_history.pdf"))
@@ -2729,7 +2735,7 @@ def plot_history(simgroup, gr, tmax=500, savefig=True):
 
 
 def plot_pressure_t(
-    simgroup, gr, ph="wc", tmax=600, zslice=slice(-50, 50), savefig=True
+    simgroup, gr, ph="wc", tmin=0, tmax=500, zslice=slice(-50, 50), savefig=True
 ):
     """Plot pressure components vs. time in the disk midplane.
 
@@ -2783,9 +2789,9 @@ def plot_pressure_t(
             plt.yscale("log")
             plt.ylim(5.0e2, 1.0e5)
             plt.xlabel(r"$t\,[{\rm Myr}]$")
-    plt.xlim(0,tmax)
+    plt.xlim(tmin, tmax)
     plt.sca(axes[1])
-    plt.legend(fontsize="small")
+    plt.legend(fontsize="x-small")
     plt.sca(axes[0])
     plt.ylabel(r"$\overline{P}^{\rm \;wc}(z=0)/k_B\,[{\rm cm^{-3}\,K}]$")
     if savefig:
@@ -2794,7 +2800,7 @@ def plot_pressure_t(
 
 
 def plot_vertical_equilibrium_t(
-    simgroup, gr, ph="wc", exclude=[], tmax=500, zmax=1000,  savefig=True
+    simgroup, gr, ph="wc", exclude=[], tmin=0, tmax=500, zmax=1000,  savefig=True
 ):
     """Plot vertical pressure equilibrium evolution over time.
 
@@ -2892,7 +2898,7 @@ def plot_vertical_equilibrium_t(
         # plt.yscale("log")
         # plt.ylim(5.0e2, 5.0e4)
         plt.xlabel(r"$t\,[{\rm Myr}]$")
-        plt.xlim(0, tmax)
+        plt.xlim(tmin, tmax)
     plt.sca(axes[0])
     plt.ylabel(  # r"$\langle P_{\rm tot} \rangle^{\rm wc}/f_A^{\rm wc}$"
         # r"$\,\langle \mathcal{W}_{\rm tot}\rangle^{\rm wc}$"
@@ -3182,3 +3188,74 @@ def plot_crgain_cumsum(s, m, savefig=True):
     if savefig:
         plt.savefig(osp.join(fig_outdir,f"{m}_Edot_cumsum_norm.pdf"))
 
+
+def plot_velocity_T(s, m, mean="linear", sigma=False, savefig=True):
+    name = model_name[m]
+    plt.figure(figsize=(4,3))
+    vel_pdfs = s.vpdfs["T"]
+    vel_fields = list(vel_pdfs.keys())
+    wf="pok_cr"
+    mean="linear"
+    labels = {
+            "velocity3": r"$v_z$",
+            "0-Vs3": r"$v_{{\rm s},z}$",
+            "0-Vd3": r"$v_{{\rm d},z}$",
+            "0-Veff3": r"$v_{{\rm eff},z}$",
+            "Vtotz": r"$v_{{\rm dyn},z}\equiv v_z+v_{{\rm s},z}$",
+        }
+    for i,vf in enumerate(vel_fields):
+        pdf = vel_pdfs[vf].sel(time=s.tslice)
+        vf_ = f"log_{vf}"
+        # get mean in linear space
+        if mean == "linear":
+            vz = (pdf[f"{wf}-pdf"] * 10.0 ** pdf[vf_]).sum(dim=vf_) / (
+                pdf[f"{wf}-pdf"]
+            ).sum(dim=vf_)
+            vz = np.log10(vz)
+        elif mean == "log":
+            # get mean in log space
+            vz = (pdf[f"{wf}-pdf"]*pdf[vf_]).sum(dim=vf_)/(pdf[f"{wf}-pdf"]).sum(dim=vf_)
+        else:
+            raise ValueError("mean must be 'linear' or 'log'")
+        label = labels[vf]
+        x = 10**vz["log_T"]
+        y = 10**vz
+        c = f"C{i}"
+        # for t in vz.time:
+        #     plt.plot(x,y.sel(time=t),color=c,alpha=0.1,lw=0.5)
+        q = y.quantile([0.16,0.5,0.84],dim="time")
+        avg = y.mean(dim="time")
+        plt.plot(x, q.sel(quantile=0.5), color=c, label=label)
+        plt.fill_between(x,q.sel(quantile=0.16),q.sel(quantile=0.84),color=c,alpha=0.2,lw=0)
+        # plt.plot(x, avg, color=c, ls="--")
+
+    if sigma:
+        pdf = s.kappa_pdfs["T-sigma_para"].sel(time=s.tslice)
+        vf_ = "log_sigma_para"
+        if mean == "linear":
+            sigma_ = (pdf[f"{wf}-pdf"] * 10.0 ** pdf[vf_]).sum(dim=vf_) / (
+                pdf[f"{wf}-pdf"]
+            ).sum(dim=vf_)
+        elif mean == "log":
+            # get mean in log space
+            sigma_ = (pdf[f"{wf}-pdf"]*pdf[vf_]).sum(dim=vf_)/(pdf[f"{wf}-pdf"]).sum(dim=vf_)
+            sigma_ = 10**(sigma_)
+        x = 10**sigma_["log_T"]
+        y = (10**sigma_)/2.e-30
+        q = y.quantile([0.16,0.5,0.84],dim="time")
+        avg = y.mean(dim="time")
+        plt.plot(x, q.sel(quantile=0.5), color="grey",
+                 ls="--",label=r"$\sigma_{\parallel}/2\cdot10^{-30}$")
+        plt.fill_between(x,q.sel(quantile=0.16),q.sel(quantile=0.84),
+                         color="grey",alpha=0.2,lw=0)
+
+    plt.legend(fontsize="x-small",ncol=2,frameon=True)
+    plt.yscale("log")
+    plt.xscale("log")
+    plt.xlim(1.e2, 1.e7)
+    plt.axhspan(40,60,color="k",alpha=0.2,linewidth=0)
+    plt.ylim(1,1.e3)
+    plt.ylabel(r"$v\,[{\rm km/s}]$")
+    plt.xlabel(r"$\log T\,[{\rm K}]$")
+    plt.axvline(2.e4,ls=":",color="k")
+    plt.savefig(os.path.join(fig_outdir,f"{name}_vT_{mean}.pdf"),bbox_inches="tight")
