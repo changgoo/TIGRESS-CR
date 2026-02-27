@@ -10,7 +10,13 @@ import cmasher as cmr
 import cmcrameri
 
 # data loader
-from cr_zprof import cr_data_load, load_group, load_windpdf, load_velocity_pdfs,load_kappa_pdfs
+from cr_zprof import (
+    cr_data_load,
+    load_group,
+    load_windpdf,
+    load_velocity_pdfs,
+    load_kappa_pdfs,
+)
 from load_sim_tigresspp import LoadSimTIGRESSPP, LoadSimTIGRESSPPAll
 
 # plotting scripts
@@ -75,32 +81,45 @@ def load(verbose=True):
         s.tslice = slice(s.tslice_Myr.start / s.u.Myr, s.tslice_Myr.stop / s.u.Myr)
         load_windpdf(s, both=True)
         if s.options["cosmic_ray"]:
-            load_velocity_pdfs(s, xf = "T")
-            zp_pp=s.load_zprof_postproc()
+            load_velocity_pdfs(s, xf="T")
+            zp_pp = s.load_zprof_postproc()
 
     # setup for plotting scripts
     ps.setup(outdir, model_name, model_color)
 
-def load_lowres(verbose=True):
+
+def load_lowres(load_sim=True, verbose=True):
     # find models
     model_dict = cr_data_load(basedir, pattern="crmhd-16pc*")
 
     # rename
     model_orig = list(model_dict.keys())
-    model_reduce = [m.replace("crmhd-16pc-b1-","").replace("-sigma_selfc-Vmax2","") for m in model_orig]
-    colors = ["xkcd:blue","xkcd:azure","xkcd:purple","xkcd:lavender","xkcd:red","xkcd:salmon"]
+    model_reduce = [
+        m.replace("crmhd-16pc-b1-", "").replace("-sigma_selfc-Vmax2", "")
+        for m in model_orig
+    ]
+    colors = [
+        "xkcd:blue",
+        "xkcd:azure",
+        "xkcd:purple",
+        "xkcd:lavender",
+        "xkcd:red",
+        "xkcd:salmon",
+    ]
     model_dict_new = dict()
 
     model_color_new = dict()
-    for (m, d), mnew, c in zip(model_dict.items(),model_reduce,colors):
-        model_dict_new[mnew]=d
-        model_color_new[mnew]=c
-    model_name_new={'diode-diode': 'diode',
-            'diode-diode-tall': 'diode-tall',
-            'diode-lngrad_out': 'mix',
-            'diode-lngrad_out-tall': 'mix-tall',
-            'lngrad_out-lngrad_out': 'lngrad',
-            'lngrad_out-lngrad_out-tall': 'lngrad-tall'}
+    for (m, d), mnew, c in zip(model_dict.items(), model_reduce, colors):
+        model_dict_new[mnew] = d
+        model_color_new[mnew] = c
+    model_name_new = {
+        "diode-diode": "diode",
+        "diode-diode-tall": "diode-tall",
+        "diode-lngrad_out": "mix",
+        "diode-lngrad_out-tall": "mix-tall",
+        "lngrad_out-lngrad_out": "lngrad",
+        "lngrad_out-lngrad_out-tall": "lngrad-tall",
+    }
     # load simulations
     sa = LoadSimTIGRESSPPAll(model_dict_new)
 
@@ -112,11 +131,12 @@ def load_lowres(verbose=True):
     # load data
     load_group(simgroup, group)
     for m, s in sims.items():
-        s.tslice_Myr = slice(200,500)
+        s.tslice_Myr = slice(200, 500)
         s.tslice = slice(s.tslice_Myr.start / s.u.Myr, s.tslice_Myr.stop / s.u.Myr)
 
     # setup for plotting scripts
     ps.setup("../fig_bcs", model_name_new, model_color_new)
+
 
 def draw_figures(num="all"):
     global simgroup
@@ -152,7 +172,7 @@ def draw_figures(num="all"):
 
     if num == "all" or num == 6:
         # velocities
-        f=ps.plot_cr_velocity_z(simgroup,group,both=True)
+        f = ps.plot_cr_velocity_z(simgroup, group, both=True)
 
     if num == "all" or num == 7:
         # kappa
@@ -165,7 +185,7 @@ def draw_figures(num="all"):
 
     if num == "all" or num == 8:
         # gain/loss
-        f=ps.plot_gainloss_z(simgroup, group)
+        f = ps.plot_gainloss_z(simgroup, group)
 
         ps.plot_gainloss_z(
             simgroup,
@@ -176,7 +196,7 @@ def draw_figures(num="all"):
     if num == "all" or num == 9:
         # flux space-time
         f = ps.plot_flux_tz(simgroup, group)
-        plt.setp(f.axes[:8],"xlim",(0,500))
+        plt.setp(f.axes[:8], "xlim", (0, 500))
         plt.savefig(osp.join(ps.fig_outdir, f"{group}_flux_tz.png"))
 
     if num == "all" or num == 10:
@@ -193,8 +213,8 @@ def draw_figures(num="all"):
 
     if num == "all" or num == 13:
         # joint pdfs
-        f=ps.plot_jointpdf(simgroup, group)
-        f=ps.plot_jointpdf(simgroup, group, flux="eflux")
+        f = ps.plot_jointpdf(simgroup, group)
+        f = ps.plot_jointpdf(simgroup, group, flux="eflux")
 
     if num == "all" or num == 14:
         # pdfs
@@ -207,8 +227,8 @@ def draw_figures(num="all"):
                 ps.plot_crgain_cumsum(s, m)
 
                 # will not be used in the paper, but just for checking
-                load_velocity_pdfs(s, xf = "T")
-                load_kappa_pdfs(s,xf="T",yf="sigma_para")
+                load_velocity_pdfs(s, xf="T")
+                load_kappa_pdfs(s, xf="T", yf="sigma_para")
                 ps.plot_velocity_T(s, m)
 
     if num == "all" or num == 3:
@@ -216,9 +236,9 @@ def draw_figures(num="all"):
         # snapshots
         for m, s in sims.items():
             s.dfi["vz"]["imshow_args"]["cmap"] = cmcrameri.cm.vik
-        with plt.style.context({"axes.grid": False,
-                                "xtick.labelsize": "small",
-                                "ytick.labelsize": "small"}):
+        with plt.style.context(
+            {"axes.grid": False, "xtick.labelsize": "small", "ytick.labelsize": "small"}
+        ):
             nums = [snapshot_nums["mhd"][0], snapshot_nums["crmhd"][0]]
             fig1, fig2 = plot_snapshot_comp(
                 sims,
@@ -232,9 +252,9 @@ def draw_figures(num="all"):
             fig2.savefig(osp.join(outdir, "snapshot_edgeon.png"))
 
         plt.close("all")
-        with plt.style.context({"axes.grid": False,
-                                "xtick.labelsize": "small",
-                                "ytick.labelsize": "small"}):
+        with plt.style.context(
+            {"axes.grid": False, "xtick.labelsize": "small", "ytick.labelsize": "small"}
+        ):
             nums = [snapshot_nums["mhd"][1], snapshot_nums["crmhd"][1]]
             fig1, fig2 = plot_snapshot_comp(
                 sims,
@@ -265,21 +285,41 @@ def draw_figures(num="all"):
             sim.dfi[f]["imshow_args"]["cmap"] = cmcrameri.cm.lapaz
         with plt.style.context({"axes.grid": False}):
             plt.close("all")
-            fig = plot_slices_cr(sim, snapshot_nums["crmhd"][0], kpc=True, hideaxes=False)
+            fig = plot_slices_cr(
+                sim, snapshot_nums["crmhd"][0], kpc=True, hideaxes=False
+            )
             fig.savefig(osp.join(outdir, "snapshot.png"))
 
             plt.close("all")
-            fig = plot_slices_cr(sim, snapshot_nums["crmhd"][1], kpc=True, hideaxes=False)
+            fig = plot_slices_cr(
+                sim, snapshot_nums["crmhd"][1], kpc=True, hideaxes=False
+            )
             fig.savefig(osp.join(outdir, "snapshot_quiet.png"))
 
-def draw_figures_appendix(simgroup,group):
-    f=ps.plot_history(simgroup,group)
-    f=ps.plot_pressure_t(simgroup,group)
-    f=ps.plot_pressure_z(simgroup,group)
-    f=ps.plot_area_mass_fraction_z(simgroup,group)
+
+def draw_figures_appendix(simgroup, group):
+    f = ps.plot_history(simgroup, group)
+    f = ps.plot_pressure_t(simgroup, group)
+    f = ps.plot_pressure_z(simgroup, group)
+    f = ps.plot_area_mass_fraction_z(simgroup, group)
+    f = ps.plot_loading_z_merged(simgroup, group, vz_dir=None, both=True)
+    for m, s in simgroup[group].items():
+        ps.plot_gainloss_z_each(
+            s,
+            m,
+            phases=[["CNM", "UNM", "WNM"], "WHIM", "HIM"],
+        )
+
+
 if __name__ == "__main__":
+    # figures for main body
     load()
     if len(sys.argv) > 1:
         draw_figures(num=int(sys.argv[1]))
     else:
         draw_figures(num="all")
+
+    # figures for appendix
+    load_lowres()
+    ps.outdir = "../figures-new"
+    f = ps.plot_BC_zprof(simgroup, "lowres")

@@ -28,7 +28,7 @@ model_name = dict()
 model_color = dict()
 
 
-def load(model_dict,verbose=True):
+def load(model_dict, verbose=True):
     global simgroup, model_name, model_color
 
     # initialize simgroup

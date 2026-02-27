@@ -11,4 +11,4 @@ if __name__ == "__main__":
     print(COMM.rank, mynums)
     for num in mynums:
         gc.collect()
-        zprof = spp.load_zprof_postproc_one(num,force_override=False)
+        zprof = spp.load_zprof_postproc_one(num, force_override=False)

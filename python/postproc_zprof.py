@@ -159,7 +159,11 @@ class PostProcessingZprof:
 
         # final results
         sigma_para = invlim * sigma_diff
-        heating = -vs_rot[0] * sigma_para * (fc_rot[0] - 4.0 / 3.0 * ec * (vel_rot[0] + vs_rot[0]))
+        heating = (
+            -vs_rot[0]
+            * sigma_para
+            * (fc_rot[0] - 4.0 / 3.0 * ec * (vel_rot[0] + vs_rot[0]))
+        )
 
         return heating
 
@@ -289,15 +293,21 @@ class PostProcessingZprof:
         angles = get_b_angle(*Bcc)
         fc_rot = rotate_vector(angles, fc)
         vel_rot = rotate_vector(angles, vel)
-        vs_rot = rotate_vector(angles,vs)
+        vs_rot = rotate_vector(angles, vs)
 
         # final results
         sigma_para = invlim * sigma_diff
         sigma_perp = invlim * sigma_diff * self.par["cr"]["perp_to_par_diff"]
 
-        work_para = -vel_rot[0] * sigma_para * (fc_rot[0] - 4.0 / 3.0 * ec * (vel_rot[0]+vs_rot[0]))
+        work_para = (
+            -vel_rot[0]
+            * sigma_para
+            * (fc_rot[0] - 4.0 / 3.0 * ec * (vel_rot[0] + vs_rot[0]))
+        )
         work_perp = -vel_rot[1] * sigma_perp * (fc_rot[1] - 4.0 / 3.0 * ec * vel_rot[1])
-        work_perp += -vel_rot[2] * sigma_perp * (fc_rot[2] - 4.0 / 3.0 * ec * vel_rot[2])
+        work_perp += (
+            -vel_rot[2] * sigma_perp * (fc_rot[2] - 4.0 / 3.0 * ec * vel_rot[2])
+        )
 
         if split:
             return work_para, work_perp
@@ -318,21 +328,21 @@ class PostProcessingZprof:
         vlim = self.par["cr"]["vmax"] / self.u.velocity.cgs.value
 
         ec = data["0-Ec"]
-        return 4.0/3.0 * ec * data[f"vel{dir}"]
+        return 4.0 / 3.0 * ec * data[f"vel{dir}"]
 
     def Fcr_stream(self, data, dir=1):
         """Ecr weighted velocity"""
         # vmax in code units
 
         ec = data["0-Ec"]
-        return 4.0/3.0 * ec * data[f"0-Vs{dir}"]
+        return 4.0 / 3.0 * ec * data[f"0-Vs{dir}"]
 
     def Fcr_diff(self, data, dir=1):
         """Ecr weighted velocity"""
         # vmax in code units
 
         ec = data["0-Ec"]
-        return 4.0/3.0 * ec * data[f"0-Vd{dir}"]
+        return 4.0 / 3.0 * ec * data[f"0-Vd{dir}"]
 
     def GetAreaForPhaseAndVz(self, data, phase, nph=0, vz_dir=1):
         """Area of the face where vz_dir*Vz>0 and phase=nph
@@ -364,7 +374,6 @@ class PostProcessingZprof:
             results[f"0-Fc{dir_}_diff"] = self.Fcr_diff(data, dir=dir_)
             results[f"0-Fc{dir_}_diff_mag"] = np.abs(self.Fcr_diff(data, dir=dir_))
             results[f"0-Vd{dir_}_mag"] = np.abs(data[f"0-Vd{dir_}"])
-
 
         return results
 

@@ -68,7 +68,11 @@ def plot_slice_xz(
         vx = f"{vec}1"
         vy = f"{vec}3"
         st = plt.streamplot(
-            slc.x.data * lunit_factor, slc.z.data * lunit_factor, slc[vx].data, slc[vy].data, **stream_kwargs
+            slc.x.data * lunit_factor,
+            slc.z.data * lunit_factor,
+            slc[vx].data,
+            slc[vy].data,
+            **stream_kwargs,
         )
     plt.gca().set_aspect("equal", adjustable="box")
     plt.xlim(sim.domain["le"][0] * lunit_factor, sim.domain["re"][0] * lunit_factor)
@@ -865,7 +869,7 @@ def plot_slices_cr(
         sharex="col",
         sharey="row",
         figsize=(xsize, ysize),
-        gridspec_kw=dict(height_ratios=[xz_ratio, 1],wspace=0.0,hspace=0.0),
+        gridspec_kw=dict(height_ratios=[xz_ratio, 1], wspace=0.0, hspace=0.0),
         constrained_layout=True,
         num=0,
     )

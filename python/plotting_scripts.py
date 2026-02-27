@@ -22,7 +22,7 @@ from cr_zprof import (
     update_flux,
     update_stress,
     fit_exponential_profile,
-    get_cr_velocities
+    get_cr_velocities,
 )
 
 plt.style.use(osp.join(filepath, "paper.mplstyle"))
@@ -109,14 +109,13 @@ def get_cumsum_both(s, zprof):
     lower = lower.assign_coords(z=lower.z * (-1))
     return lower + upper
 
+
 def get_sum_both(s, zprof):
     upper = zprof.sel(z=slice(0, s.domain["re"][2]))
-    lower = (
-        zprof.sel(z=slice(s.domain["le"][2], 0))
-        .isel(z=slice(None, None, -1))
-    )
+    lower = zprof.sel(z=slice(s.domain["le"][2], 0)).isel(z=slice(None, None, -1))
     lower = lower.assign_coords(z=lower.z * (-1))
-    return upper-lower
+    return upper - lower
+
 
 def get_cumsum_both_reverse(s, zprof):
     upper = (
@@ -129,23 +128,24 @@ def get_cumsum_both_reverse(s, zprof):
     lower = lower.assign_coords(z=lower.z * (-1))
     return lower + upper
 
+
 def fold_avg_vel(zprof, both=True, scalar=False, vz_dir=None):
     upper = zprof.sel(z=slice(0, None))
-    lower = (
-        zprof.sel(z=slice(None, 0))
-        .isel(z=slice(None, None, -1))
-    )
+    lower = zprof.sel(z=slice(None, 0)).isel(z=slice(None, None, -1))
     lower = lower.assign_coords(z=lower.z * (-1))
     if vz_dir is None:
-        upper = upper.sum(dim='vz_dir')
-        lower = lower.sum(dim='vz_dir')
+        upper = upper.sum(dim="vz_dir")
+        lower = lower.sum(dim="vz_dir")
     else:
         upper = upper.sel(vz_dir=vz_dir)
         lower = lower.sel(vz_dir=-vz_dir)
     if both:
-        return upper/(upper["area"]+lower["area"]), lower/(upper["area"]+lower["area"])
+        return upper / (upper["area"] + lower["area"]), lower / (
+            upper["area"] + lower["area"]
+        )
     else:
-        return upper/upper["area"], lower/lower["area"]
+        return upper / upper["area"], lower / lower["area"]
+
 
 # ----------------------------------------
 # definition of base plotting functions
@@ -1605,6 +1605,7 @@ def plot_loading_z(simgroup, gr, vz_dir=None, both=True, kpc=True, savefig=True)
         plt.savefig(osp.join(fig_outdir, f"{gr}_loading_{vout_label}_z.pdf"))
     return fig
 
+
 def plot_loading_z_merged(simgroup, gr, vz_dir=None, both=True, kpc=True, savefig=True):
     """Plot flux loading (normalized by reference star formation) for a simulation group.
 
@@ -1776,17 +1777,11 @@ def plot_loading_z_merged(simgroup, gr, vz_dir=None, both=True, kpc=True, savefi
     plt.legend(fontsize="x-small")
 
     vout_label = "out" if vz_dir == 1 else ""
-    plt.ylabel(
-        f"$\\eta_M^{{\\rm {vout_label}}}$"
-    )
+    plt.ylabel(f"$\\eta_M^{{\\rm {vout_label}}}$")
     plt.sca(axs[1])
-    plt.ylabel(
-        f"$\\eta_p^{{\\rm {vout_label}}}$"
-    )
+    plt.ylabel(f"$\\eta_p^{{\\rm {vout_label}}}$")
     plt.sca(axs[2])
-    plt.ylabel(
-        f"$\\eta_E^{{\\rm {vout_label}}}$"
-    )
+    plt.ylabel(f"$\\eta_E^{{\\rm {vout_label}}}$")
     lines, labels = axs[2].get_legend_handles_labels()
     custom_lines = [lines[icrmhd - 2], lines[icrmhd - 1]]
     plt.legend(custom_lines, ["MHD flux", "CR flux"], fontsize="x-small")
@@ -2310,7 +2305,7 @@ def plot_gainloss_z_each(
             plt.title(f"ph={ph}")
         for f, c in zip(
             ["cool_rate", "heat_rate", "cr_heating", "cr_work", "grav_work"],
-            ["xkcd:deepblue", "xkcd:coral", "C2", "C3", "C4"],
+            ["xkcd:teal", "xkcd:coral", "C2", "C3", "C4"],
         ):
             kwargs = dict(label=labels[f])
             if f == "grav_work":
@@ -2664,24 +2659,24 @@ def plot_momentum_transfer_z(
         # calculate pressure differences w.r.t. z=1kpc
         Pu = PMHD.sel(**zref_sel[0]).sel(phase="wc").mean(dim="time")
         Pl = PMHD.sel(**zref_sel[1]).sel(phase="wc").mean(dim="time")
-        Pref = 0.5*(Pu + Pl)
+        Pref = 0.5 * (Pu + Pl)
         Pu = Pref
         Pl = Pref
         print(model_name[m], Pref.data)
 
         # upper half
-        dFMHD_upper = (PMHD.sel(z=zslice[0]) - PMHD.sel(**zref_sel[0]))/Pu
-        dFtrb_upper = (Ptrb.sel(z=zslice[0]) - Ptrb.sel(**zref_sel[0]))/Pu
+        dFMHD_upper = (PMHD.sel(z=zslice[0]) - PMHD.sel(**zref_sel[0])) / Pu
+        dFtrb_upper = (Ptrb.sel(z=zslice[0]) - Ptrb.sel(**zref_sel[0])) / Pu
         W_upper = (dW.sel(z=zslice[0]).cumsum(dim="z")) * dz / Pu
         W_upper_ref = dW.sel(z=zslice_ref[0]).sum(dim="z") * dz / Pu
-        upper_fields = [dFMHD_upper, dFtrb_upper, W_upper-W_upper_ref]
+        upper_fields = [dFMHD_upper, dFtrb_upper, W_upper - W_upper_ref]
         # lower half
-        dFMHD_lower = (PMHD.sel(z=zslice[1]) - PMHD.sel(**zref_sel[1]))/Pl
-        dFtrb_lower = (Ptrb.sel(z=zslice[1]) - Ptrb.sel(**zref_sel[1]))/Pl
+        dFMHD_lower = (PMHD.sel(z=zslice[1]) - PMHD.sel(**zref_sel[1])) / Pl
+        dFtrb_lower = (Ptrb.sel(z=zslice[1]) - Ptrb.sel(**zref_sel[1])) / Pl
         W_lower = (-dW.sel(z=zslice[1]).isel(z=zreverse).cumsum(dim="z")) * dz / Pl
         W_lower = W_lower.isel(z=zreverse)  # reverse back to increasing z order
         W_lower_ref = (-dW.sel(z=zslice_ref[1]).sum(dim="z")) * dz / Pl
-        lower_fields = [dFMHD_lower, dFtrb_lower, W_lower-W_lower_ref]
+        lower_fields = [dFMHD_lower, dFtrb_lower, W_lower - W_lower_ref]
 
         if s.options["cosmic_ray"]:
             dPcr_upper = (Pcr.sel(z=zslice[0]) - Pcr.sel(**zref_sel[0])) / Pu
@@ -2720,7 +2715,7 @@ def plot_momentum_transfer_z(
                     # label=r"$\Delta \mathcal{F}_{p,{\rm MHD}}^{\tt wc}$"
                     #       r"$- \mathcal{W}^{\tt wc}$",
                     label=r"$\Delta_{z_{\rm ref}} P_{{\rm MHD}}^{\tt wc}$"
-                          r"$+ \mathcal{W}^{\tt wc}$",
+                    r"$+ \mathcal{W}^{\tt wc}$",
                     color=color,
                     lw=3,
                 )
@@ -2760,7 +2755,7 @@ def plot_momentum_transfer_z(
                     (dFMHD - W).sel(phase="wc"),
                     kpc=kpc,
                     label=r"$\Delta_{z_{\rm ref}} \mathcal{F}_{p,{\rm MHD}}^{\tt wc}$"
-                          r"$+ \mathcal{W}^{\tt wc}$",
+                    r"$+ \mathcal{W}^{\tt wc}$",
                     color=color,
                     lw=3,
                 )
@@ -2778,7 +2773,7 @@ def plot_momentum_transfer_z(
                     -(dFMHD - W).sel(phase="hot"),
                     kpc=kpc,
                     label=r"$-(\Delta_{z_{\rm ref}} \mathcal{F}_{p,{\rm MHD}}^{\tt hot}$"
-                          r"$+ \mathcal{W}^{\tt hot})$",
+                    r"$+ \mathcal{W}^{\tt hot})$",
                     color=color,
                     ls=":",
                     quantile=False,
@@ -2807,7 +2802,7 @@ def plot_momentum_transfer_z(
                     (dFMHD - W).sel(phase="wc"),
                     kpc=kpc,
                     label=r"$\Delta \mathcal{F}_{p,{\rm MHD}}^{\tt wc}$"
-                          r"$- \mathcal{W}^{\tt wc}$",
+                    r"$- \mathcal{W}^{\tt wc}$",
                     color=color,
                     lw=3,
                 )
@@ -2821,8 +2816,10 @@ def plot_momentum_transfer_z(
                     quantile=False,
                 )
                 RHS_hot = -(dFMHD - W).sel(phase="hot")
-                RHS_hot_label = (r"$-(\Delta \mathcal{F}_{p,{\rm MHD}}^{\tt hot}$"
-                                 r"$- \mathcal{W}^{\tt hot})$")
+                RHS_hot_label = (
+                    r"$-(\Delta \mathcal{F}_{p,{\rm MHD}}^{\tt hot}$"
+                    r"$- \mathcal{W}^{\tt hot})$"
+                )
                 if s.options["cosmic_ray"]:
                     RHS_hot += (-dPcr).sel(phase="hot")
                     RHS_hot_label += r"$-\Delta P_{\rm c}^{\tt hot}$"
@@ -2835,10 +2832,10 @@ def plot_momentum_transfer_z(
                     ls=":",
                     quantile=False,
                 )
-    zfactor = 1.e-3 if kpc else 1.0
+    zfactor = 1.0e-3 if kpc else 1.0
     plt.sca(axes[0, 0])
     plt.title("lower")
-    plt.xlim(-4, -zmin*zfactor)
+    plt.xlim(-4, -zmin * zfactor)
     # if zmin<zref:
     #     plt.ylim(-5,5)
     # else:
@@ -2846,19 +2843,24 @@ def plot_momentum_transfer_z(
     plt.sca(axes[0, 1])
     plt.title("upper")
     plt.legend(frameon=False, loc=4)
-    plt.xlim(zmin*zfactor, 4)
+    plt.xlim(zmin * zfactor, 4)
     plt.sca(axes[1, 1])
-    plt.legend(frameon=False, loc=4, ncol=2 )
+    plt.legend(frameon=False, loc=4, ncol=2)
     plt.setp(
         axes[:, 0],
         ylabel=r"$\langle\Delta_{z_{\rm ref}} P \rangle/$"
-            #    r"$\langle\mathcal{F}_{p,{\rm MHD}}^{\tt wc}(z_{\rm ref})\rangle$",
-               r"$\langle P_{{\rm MHD}}^{\tt wc}(|z_{\rm ref}|)\rangle$",
+        #    r"$\langle\mathcal{F}_{p,{\rm MHD}}^{\tt wc}(z_{\rm ref})\rangle$",
+        r"$\langle P_{{\rm MHD}}^{\tt wc}(|z_{\rm ref}|)\rangle$",
     )
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
     plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label)
     if savefig:
-        plt.savefig(osp.join(fig_outdir, f"{gr}_dflux_{show_option}_zmin{zmin*zfactor}_zref{zref*zfactor}.pdf"))
+        plt.savefig(
+            osp.join(
+                fig_outdir,
+                f"{gr}_dflux_{show_option}_zmin{zmin * zfactor}_zref{zref * zfactor}.pdf",
+            )
+        )
     return fig
 
 
@@ -2983,7 +2985,10 @@ def plot_history(simgroup, gr, tmin=0, tmax=500, savefig=True):
                 y = y - y0
             plt.plot(x, y, label=label if i == 0 else None, ls=ls, color=color)
             print(
-                name, field, h[field].loc[s.tslice_Myr].min(), h[field].loc[s.tslice_Myr].max()
+                name,
+                field,
+                h[field].loc[s.tslice_Myr].min(),
+                h[field].loc[s.tslice_Myr].max(),
             )
             i += 1
     plt.sca(axes[0])
@@ -3032,10 +3037,14 @@ def plot_pressure_t(
     fig, axes = plt.subplots(
         1, 4, figsize=(8, 2), sharey=True, sharex=True, constrained_layout=True
     )
-    to_kms=((ac.k_B/au.cm**3*au.K)/(au.M_sun/ac.kpc**2/au.yr)).to("km/s").value
-    tbl_str = f"{'Model':<8} \\& {"sfr":>10} \\& {"P_cr/k_B":>10} \\& {"P_th/k_B":>10} "\
-    f"\\& {"P_kin/k_B":>10} \\& {"Pi_B/k_B":>10} \\& {"P_MHD/k_B":>10} \\& {"Y_cr":>10} "\
-    f"\\& {"Y_th":>10} \\& {"Y_kin":>10} \\& {"Y_B":>10} \\& {"Y_MHD":>10}\\\\ \n"
+    to_kms = (
+        ((ac.k_B / au.cm**3 * au.K) / (au.M_sun / ac.kpc**2 / au.yr)).to("km/s").value
+    )
+    tbl_str = (
+        f"{'Model':<8} \\& {'sfr':>10} \\& {'P_cr/k_B':>10} \\& {'P_th/k_B':>10} "
+        f"\\& {'P_kin/k_B':>10} \\& {'Pi_B/k_B':>10} \\& {'P_MHD/k_B':>10} \\& {'Y_cr':>10} "
+        f"\\& {'Y_th':>10} \\& {'Y_kin':>10} \\& {'Y_B':>10} \\& {'Y_MHD':>10}\\\\ \n"
+    )
     for m, s in sims.items():
         color = model_color[m]
         name = model_name[m]
@@ -3059,8 +3068,8 @@ def plot_pressure_t(
             if lab == "cr":
                 lab = "c"
             if pfield not in dset:
-                ptbl += f"\\& {"\\nodata":>10} "
-                Ytbl += f"\\& {"\\nodata":>10} "
+                ptbl += f"\\& {'\\nodata':>10} "
+                Ytbl += f"\\& {'\\nodata':>10} "
                 continue
             # if pfield == "Pok_cr":
             #     pok = (dset[pfield].sum(dim="phase")/dset["area"].sum(dim="phase")).mean(dim="z")
@@ -3071,8 +3080,10 @@ def plot_pressure_t(
 
             avg = pok.sel(time=s.tslice).mean().data
             std = pok.sel(time=s.tslice).std().data
-            pavg = (dset[pfield].sel(time=s.tslice, phase=ph).mean() /
-                    dset["area"].sel(time=s.tslice, phase=ph).mean()).data
+            pavg = (
+                dset[pfield].sel(time=s.tslice, phase=ph).mean()
+                / dset["area"].sel(time=s.tslice, phase=ph).mean()
+            ).data
             ptbl += f"\\& {pavg:10.2e} "
             print(name, pfield, avg, pavg)
             if pfield.startswith("Pok_"):
@@ -3086,15 +3097,16 @@ def plot_pressure_t(
             plt.ylim(5.0e2, 1.0e5)
             plt.xlabel(r"$t\,[{\rm Myr}]$")
 
-
-            print(name, avg/sfr_avg*to_kms)
-            Ytbl += f"\\& {(pavg/sfr_avg*to_kms):10.2f} "
+            print(name, avg / sfr_avg * to_kms)
+            Ytbl += f"\\& {(pavg / sfr_avg * to_kms):10.2f} "
         # Ptot
         pfield = "Pok_tot"
-        pavg = (dset[pfield].sel(time=s.tslice, phase=ph).mean() /
-                dset["area"].sel(time=s.tslice, phase=ph).mean()).data
+        pavg = (
+            dset[pfield].sel(time=s.tslice, phase=ph).mean()
+            / dset["area"].sel(time=s.tslice, phase=ph).mean()
+        ).data
         ptbl += f"\\& {pavg:10.2e} "
-        Ytbl += f"\\& {(pavg/sfr_avg*to_kms):10.2f} "
+        Ytbl += f"\\& {(pavg / sfr_avg * to_kms):10.2f} "
         tbl_str += ptbl + Ytbl + " \\\\ \n"
     print(tbl_str)
     plt.xlim(tmin, tmax)
@@ -3474,15 +3486,15 @@ def plot_crgain_cumsum(s, m, savefig=True):
     vmax_kms = s.par["cr"]["vmax"] / 1.0e5
     dset = s.zp_ph.sel(time=s.tslice).sum(dim="vz_dir")
     dz = s.domain["dx"][2]
-    area = s.domain["Lx"][0]*s.domain["Lx"][1]
-    dset["cr_work"] = dset["0-work_cr"] * dz/area * (s.u.energy_flux).cgs.value
+    area = s.domain["Lx"][0] * s.domain["Lx"][1]
+    dset["cr_work"] = dset["0-work_cr"] * dz / area * (s.u.energy_flux).cgs.value
     tdec_scr = s.par["feedback"]["tdec_scr"] * s.u.Myr
-    dset["CRinj_rate"] = (dset["sCR"] * dz / tdec_scr/area) * (s.u.energy_flux).cgs.value
-    dset["cr_loss"] = -dset["0-cooling_cr"]* dz/area * (s.u.energy_flux).cgs.value
-    dset["cr_heating"] = (
-        -dset["0-heating_cr"]*dz/area * (s.u.energy_flux).cgs.value
-    )
-    dset["cr_flux"] = vmax_kms * dset["0-Fc3"]/area * (s.u.energy_flux).cgs.value
+    dset["CRinj_rate"] = (dset["sCR"] * dz / tdec_scr / area) * (
+        s.u.energy_flux
+    ).cgs.value
+    dset["cr_loss"] = -dset["0-cooling_cr"] * dz / area * (s.u.energy_flux).cgs.value
+    dset["cr_heating"] = -dset["0-heating_cr"] * dz / area * (s.u.energy_flux).cgs.value
+    dset["cr_flux"] = vmax_kms * dset["0-Fc3"] / area * (s.u.energy_flux).cgs.value
     crwork = get_cumsum_both(s, dset["cr_work"])
     crinj = get_cumsum_both(s, dset["CRinj_rate"])
     crloss = get_cumsum_both(s, dset["cr_loss"])
@@ -3490,38 +3502,70 @@ def plot_crgain_cumsum(s, m, savefig=True):
     crflux = get_sum_both(s, dset["cr_flux"])
 
     dt = 0.1
-    mstar = 1 / np.sum(s.pop_synth["snrate"] * dt)*au.M_sun
+    mstar = 1 / np.sum(s.pop_synth["snrate"] * dt) * au.M_sun
     field = "sfr40"
     if hasattr(s, "hst"):
         h = s.hst
     else:
         h = s.make_monotonic(s.read_hst())
-    sfr_avg = h[field].loc[s.tslice_Myr].mean() * au.M_sun / au.kpc**2/ au.yr
+    sfr_avg = h[field].loc[s.tslice_Myr].mean() * au.M_sun / au.kpc**2 / au.yr
     ESN = s.par["feedback"]["E_inj"] * 1.0e51 * au.erg
 
     # sinj = crinj.sum(dim="phase").mean(dim="time").sel(z=crinj.z.max()).data
     sinj = (sfr_avg / mstar * ESN).cgs.value
     print("sinj", sinj)
 
-    labels = [ r"$F_{\rm in,W}$", r"$F_{\rm in,SN}$",r"$G_{\rm st}$",r"$L_{\rm coll}$", r"$F_{\rm out}$", r"$F_{\rm in}$"]
-    colors = [ "C3", "xkcd:coral", "C2", "xkcd:teal", "C0", "C1" ]
+    labels = [
+        r"$F_{\rm in,W}$",
+        r"$F_{\rm in,SN}$",
+        r"$G_{\rm st}$",
+        r"$L_{\rm coll}$",
+        r"$F_{\rm out}$",
+        r"$F_{\rm in}$",
+    ]
+    colors = ["C3", "xkcd:coral", "C2", "xkcd:teal", "C0", "C1"]
     # colors.append("k")
-    for i,(flx,lab) in enumerate(zip([ crwork, crinj, crheating, crloss, crflux, crwork+ crinj- crheating- crloss],labels)):
+    for i, (flx, lab) in enumerate(
+        zip(
+            [
+                crwork,
+                crinj,
+                crheating,
+                crloss,
+                crflux,
+                crwork + crinj - crheating - crloss,
+            ],
+            labels,
+        )
+    ):
         plot_zprof_mean_quantile(
             flx.sum(dim="phase") / sinj,
             label=lab,
             color=colors[i],
         )
-        print(lab,flx.sum(dim="phase").mean(dim="time").sel(z=500,method="nearest").data/sinj,flx.sum(dim="phase").mean(dim="time").sel(z=1000,method="nearest").data/sinj)
-    labelLines(plt.gca().get_lines(), zorder=2.5, align=True, fontsize="medium", outline_width=2)
+        print(
+            lab,
+            flx.sum(dim="phase").mean(dim="time").sel(z=500, method="nearest").data
+            / sinj,
+            flx.sum(dim="phase").mean(dim="time").sel(z=1000, method="nearest").data
+            / sinj,
+        )
+    labelLines(
+        plt.gca().get_lines(),
+        zorder=2.5,
+        align=True,
+        fontsize="medium",
+        outline_width=2,
+    )
     plt.ylabel(r"$F(|z|)/F_{\rm E,SN}$")
     plt.xlabel(r"$|z|\,[{\rm kpc}]$")
-    plt.xlim(0,4)
+    plt.xlim(0, 4)
 
     if savefig:
         plt.savefig(os.path.join(fig_outdir, f"{name}_Edot_cumsum_norm.pdf"))
 
-    return crflux.sum(dim="phase").mean(dim="time")/sinj
+    return crflux.sum(dim="phase").mean(dim="time") / sinj
+
 
 def plot_velocity_T(s, m, mean="linear", sigma=False, savefig=True):
     name = model_name[m]
@@ -3609,9 +3653,16 @@ def plot_velocity_T(s, m, mean="linear", sigma=False, savefig=True):
     plt.ylabel(r"$v\,[{\rm km/s}]$")
     plt.xlabel(r"$\log T\,[{\rm K}]$")
     plt.axvline(2.0e4, ls=":", color="k")
-    labelLines(plt.gca().get_lines(), zorder=2.5,
-                xvals=[5.e2,1.e6,5.e2,2.e2,1.e6], align=True, fontsize="large", outline_width=3)
+    labelLines(
+        plt.gca().get_lines(),
+        zorder=2.5,
+        xvals=[5.0e2, 1.0e6, 5.0e2, 2.0e2, 1.0e6],
+        align=True,
+        fontsize="large",
+        outline_width=3,
+    )
     plt.savefig(os.path.join(fig_outdir, f"{name}_vT_{mean}.pdf"), bbox_inches="tight")
+
 
 def plot_cr_velocity_z(simgroup, gr, both=True, kpc=True, savefig=True):
     fig, axs = plt.subplots(1, 2, figsize=(8, 3.5), constrained_layout=True)
@@ -3619,23 +3670,29 @@ def plot_cr_velocity_z(simgroup, gr, both=True, kpc=True, savefig=True):
 
     # vertical velocity
     plt.sca(axs[0])
-    for m,s in sims.items():
+    for m, s in sims.items():
         s = sims[m]
         c = model_color[m]
         zpsel = s.zp_ph.sel(time=s.tslice)
-        vnet_u,vnet_l = fold_avg_vel(zpsel[["vel3","area"]],both=both)
-        vout_u,vout_l = fold_avg_vel(zpsel[["vel3","area"]],vz_dir=1,both=both)
+        vnet_u, vnet_l = fold_avg_vel(zpsel[["vel3", "area"]], both=both)
+        vout_u, vout_l = fold_avg_vel(zpsel[["vel3", "area"]], vz_dir=1, both=both)
         if both:
             vnet = vnet_u - vnet_l
             vout = vout_u - vout_l
         else:
             vnet = vnet_u
             vout = vout_u
-        ph="wc"
-        plot_zprof_quantile(vout["vel3"].sel(phase=ph),color=c,
-                            label=f"{model_name[m]}, out")
-        plot_zprof_quantile(vnet["vel3"].sel(phase=ph),color=c,
-                            label=f"{model_name[m]}, net", ls=":", quantile=False)
+        ph = "wc"
+        plot_zprof_quantile(
+            vout["vel3"].sel(phase=ph), color=c, label=f"{model_name[m]}, out"
+        )
+        plot_zprof_quantile(
+            vnet["vel3"].sel(phase=ph),
+            color=c,
+            label=f"{model_name[m]}, net",
+            ls=":",
+            quantile=False,
+        )
         # zpsel = s.zp_ph.sel(time=s.tslice)
         # dnet = zpsel.sel(z=slice(0, zpsel.z.max())).sum(dim="vz_dir")
         # dout = zpsel.sel(z=slice(0, zpsel.z.max()), vz_dir=1)
@@ -3653,8 +3710,8 @@ def plot_cr_velocity_z(simgroup, gr, both=True, kpc=True, savefig=True):
         #     ls=":",
         #     label=f"{model_name[m]}, net"
         # )
-        plt.xlim(0,4)
-        plt.ylim(-20,70)
+        plt.xlim(0, 4)
+        plt.ylim(-20, 70)
 
     # cr velocities
     plt.sca(axs[1])
@@ -3674,7 +3731,7 @@ def plot_cr_velocity_z(simgroup, gr, both=True, kpc=True, savefig=True):
         "vcr": r"$v_{{\rm c},z}$",
     }
 
-    for m,s in sims.items():
+    for m, s in sims.items():
         s = sims[m]
         if s.options["cosmic_ray"]:
             # zp = s.zprof.sel(time=s.tslice)
@@ -3683,51 +3740,87 @@ def plot_cr_velocity_z(simgroup, gr, both=True, kpc=True, savefig=True):
             zp_ = zp_.assign_coords(time=zp_.time.astype(int))
             zpp_ = s.zp_pp_ph.sel(time=s.tslice).sum(dim=["phase"])
             zpp_ = zpp_.assign_coords(time=zpp_.time.astype(int))
-            cr_vel_u1, cr_vel_l1 = fold_avg_vel(zp_[["rho","0-Ec","mom3","0-Fc3","area"]],both=both)
-            cr_vel_u2, cr_vel_l2 = fold_avg_vel(zpp_[["0-Fc3_adv","0-Fc3_stream","0-Fc3_diff","0-Fc3_diff_mag","area"]],both=both)
+            cr_vel_u1, cr_vel_l1 = fold_avg_vel(
+                zp_[["rho", "0-Ec", "mom3", "0-Fc3", "area"]], both=both
+            )
+            cr_vel_u2, cr_vel_l2 = fold_avg_vel(
+                zpp_[
+                    [
+                        "0-Fc3_adv",
+                        "0-Fc3_stream",
+                        "0-Fc3_diff",
+                        "0-Fc3_diff_mag",
+                        "area",
+                    ]
+                ],
+                both=both,
+            )
             if both:
-                cr_vel = cr_vel_u1[["rho","0-Ec"]] + cr_vel_l1[["rho","0-Ec"]]
-                cr_vel.update(cr_vel_u1[["mom3","0-Fc3"]] - cr_vel_l1[["mom3","0-Fc3"]])
-                cr_vel.update(cr_vel_u2[["0-Fc3_adv","0-Fc3_stream","0-Fc3_diff"]] - cr_vel_l2[["0-Fc3_adv","0-Fc3_stream","0-Fc3_diff"]])
-                cr_vel.update(cr_vel_u2[["0-Fc3_diff_mag"]] + cr_vel_l2[["0-Fc3_diff_mag"]])
+                cr_vel = cr_vel_u1[["rho", "0-Ec"]] + cr_vel_l1[["rho", "0-Ec"]]
+                cr_vel.update(
+                    cr_vel_u1[["mom3", "0-Fc3"]] - cr_vel_l1[["mom3", "0-Fc3"]]
+                )
+                cr_vel.update(
+                    cr_vel_u2[["0-Fc3_adv", "0-Fc3_stream", "0-Fc3_diff"]]
+                    - cr_vel_l2[["0-Fc3_adv", "0-Fc3_stream", "0-Fc3_diff"]]
+                )
+                cr_vel.update(
+                    cr_vel_u2[["0-Fc3_diff_mag"]] + cr_vel_l2[["0-Fc3_diff_mag"]]
+                )
             else:
                 cr_vel = cr_vel_u1
                 cr_vel.update(cr_vel_u2)
 
             vmax = s.par["cr"]["vmax"] / s.u.velocity.cgs.value
-            Pcr = cr_vel["0-Ec"]/3.
-            cr_vel["vz"]=cr_vel["mom3"]/cr_vel["rho"]
-            cr_vel["va"]=cr_vel["0-Fc3_adv"]/(4*Pcr)
-            cr_vel["vs"]=cr_vel["0-Fc3_stream"]/(4*Pcr)
-            cr_vel["vd"]=cr_vel["0-Fc3_diff"]/(4*Pcr)
-            cr_vel["vd_mag"]=cr_vel["0-Fc3_diff_mag"]/(4*Pcr)
-            cr_vel["vcr"]=vmax*cr_vel["0-Fc3"]/(4*Pcr)
+            Pcr = cr_vel["0-Ec"] / 3.0
+            cr_vel["vz"] = cr_vel["mom3"] / cr_vel["rho"]
+            cr_vel["va"] = cr_vel["0-Fc3_adv"] / (4 * Pcr)
+            cr_vel["vs"] = cr_vel["0-Fc3_stream"] / (4 * Pcr)
+            cr_vel["vd"] = cr_vel["0-Fc3_diff"] / (4 * Pcr)
+            cr_vel["vd_mag"] = cr_vel["0-Fc3_diff_mag"] / (4 * Pcr)
+            cr_vel["vcr"] = vmax * cr_vel["0-Fc3"] / (4 * Pcr)
             # vels = get_cr_velocities(s, zp, zpp)
             # vel = vels["all_w"]
-            for vf,c in zip(["va","vs","vd_mag","vcr"],["C0","C1","C2","C3"]):
-                plot_zprof_quantile(cr_vel[vf],color=c,label=labels[vf])
-            plot_zprof_quantile(cr_vel["va"]+cr_vel["vs"],color="C4",
-                                     label=labels["va"]+r"$+$"+labels["vs"],#ls="--",
-                                     quantile=False)
-        plt.xlim(0,4)
-        plt.ylim(-20,70)
+            for vf, c in zip(["va", "vs", "vd_mag", "vcr"], ["C0", "C1", "C2", "C3"]):
+                plot_zprof_quantile(cr_vel[vf], color=c, label=labels[vf])
+            plot_zprof_quantile(
+                cr_vel["va"] + cr_vel["vs"],
+                color="C4",
+                label=labels["va"] + r"$+$" + labels["vs"],  # ls="--",
+                quantile=False,
+            )
+        plt.xlim(0, 4)
+        plt.ylim(-20, 70)
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
 
     plt.sca(axs[0])
     plt.ylabel(r"$\overline{v}_z^{\tt wc}\,[{\rm km/s}]$")
-    labelLines(plt.gca().get_lines(), zorder=2.5, xvals=(3.8, 3.5, 3.0, 1.5),
-            ha="right",
-            fontsize="small", align=False, outline_width=2)
+    labelLines(
+        plt.gca().get_lines(),
+        zorder=2.5,
+        xvals=(3.8, 3.5, 3.0, 1.5),
+        ha="right",
+        fontsize="small",
+        align=False,
+        outline_width=2,
+    )
     if both:
         plt.xlabel(r"$|z|$" + zunit_label)
     else:
         plt.xlabel(r"$z$" + zunit_label)
-    plt.annotate("(a)",(0.05,0.95),xycoords="axes fraction",ha="left",va="top")
+    plt.annotate("(a)", (0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
 
     plt.sca(axs[1])
     plt.ylabel(r"CR velocity $[{\rm km/s}]$")
-    labelLines(plt.gca().get_lines(), zorder=2.5, xvals=[3.5,3.45,3.5,3.4,2.6], align=True, fontsize="large", outline_width=3)
-    plt.annotate("(b)",(0.05,0.95),xycoords="axes fraction",ha="left",va="top")
+    labelLines(
+        plt.gca().get_lines(),
+        zorder=2.5,
+        xvals=[3.5, 3.45, 3.5, 3.4, 2.6],
+        align=True,
+        fontsize="large",
+        outline_width=3,
+    )
+    plt.annotate("(b)", (0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
 
     if both:
         plt.xlabel(r"$|z|$" + zunit_label)
@@ -3737,6 +3830,7 @@ def plot_cr_velocity_z(simgroup, gr, both=True, kpc=True, savefig=True):
         plt.savefig(os.path.join(fig_outdir, f"{gr}_velocity_z_new.pdf"))
 
     return fig
+
 
 def plot_pressure_z_talk(simgroup, gr, ph="wc", kpc=True, savefig=True):
     """Plot pressure components vs. height with exponential fits.
@@ -3756,7 +3850,9 @@ def plot_pressure_z_talk(simgroup, gr, ph="wc", kpc=True, savefig=True):
     """
     sims = simgroup[gr]
     models = list(sims.keys())
-    fig, axes = plt.subplots(1, 2, figsize=(4, 2.5), sharey=True, constrained_layout=True)
+    fig, axes = plt.subplots(
+        1, 2, figsize=(4, 2.5), sharey=True, constrained_layout=True
+    )
     for i, m in enumerate(models):
         s = sims[m]
         c = model_color[m]
@@ -3801,10 +3897,11 @@ def plot_pressure_z_talk(simgroup, gr, ph="wc", kpc=True, savefig=True):
         plt.savefig(osp.join(fig_outdir, f"{gr}_pressures_z_talk.pdf"))
 
     plt.setp(axes, "yscale", "linear")
-    plt.setp(axes, "ylim", (4.e3, 1.3e4))
+    plt.setp(axes, "ylim", (4.0e3, 1.3e4))
     if savefig:
         plt.savefig(osp.join(fig_outdir, f"{gr}_pressures_z_talk_lin.pdf"))
     return fig
+
 
 def plot_momentum_transfer_z_talk(
     simgroup,
@@ -3898,14 +3995,14 @@ def plot_momentum_transfer_z_talk(
         Pl = PMHD.sel(**zref_sel[1]).sel(phase="wc").mean(dim="time")
 
         # upper half
-        dFMHD_upper = (PMHD.sel(z=zslice[0]) - PMHD.sel(**zmin_sel[0]))/Pu
-        dFtrb_upper = (Ptrb.sel(z=zslice[0]) - Ptrb.sel(**zmin_sel[0]))/Pu
+        dFMHD_upper = (PMHD.sel(z=zslice[0]) - PMHD.sel(**zmin_sel[0])) / Pu
+        dFtrb_upper = (Ptrb.sel(z=zslice[0]) - Ptrb.sel(**zmin_sel[0])) / Pu
         W_upper = (dW.sel(z=zslice[0]).cumsum(dim="z")) * dz / Pu
         W_upper_ref = dW.sel(z=zslice[0]).sum(dim="z") * dz / Pu
         upper_fields = [dFMHD_upper, dFtrb_upper, W_upper]
         # lower half
-        dFMHD_lower = (PMHD.sel(z=zslice[1]) - PMHD.sel(**zmin_sel[1]))/Pl
-        dFtrb_lower = (Ptrb.sel(z=zslice[1]) - Ptrb.sel(**zmin_sel[1]))/Pl
+        dFMHD_lower = (PMHD.sel(z=zslice[1]) - PMHD.sel(**zmin_sel[1])) / Pl
+        dFtrb_lower = (Ptrb.sel(z=zslice[1]) - Ptrb.sel(**zmin_sel[1])) / Pl
         W_lower = (-dW.sel(z=zslice[1]).isel(z=zreverse).cumsum(dim="z")) * dz / Pl
         W_lower = W_lower.isel(z=zreverse)  # reverse back to increasing z order
         W_lower_ref = (dW.sel(z=zslice[1]).sum(dim="z")) * dz / Pl
@@ -3980,7 +4077,7 @@ def plot_momentum_transfer_z_talk(
                         ls="--",
                         quantile=False,
                     )
-    zfactor = 1.e-3 if kpc else 1.0
+    zfactor = 1.0e-3 if kpc else 1.0
     plt.sca(axes[0, 0])
     # plt.title("lower")
     # plt.xlim(-4, -zmin*zfactor)
@@ -3991,58 +4088,73 @@ def plot_momentum_transfer_z_talk(
     # plt.sca(axes[0, 1])
     plt.title("normalized momentum transfer")
     plt.legend(frameon=False, loc=2)
-    plt.xlim(zmin*zfactor, 4)
+    plt.xlim(zmin * zfactor, 4)
     # plt.sca(axes[1, 1])
     # plt.legend(frameon=False, loc=2)
     plt.setp(
         axes[:, 0],
         ylabel=r"$\langle\Delta P\rangle/$"
-               r"$\langle\mathcal{F}_{p,{\rm MHD}}^{\tt wc}(1{\rm\,kpc})\rangle$",
+        r"$\langle\mathcal{F}_{p,{\rm MHD}}^{\tt wc}(1{\rm\,kpc})\rangle$",
         # ylabel=r"momentum gain/loss normalized by\n MHD momentum flux at 1kpc",
     )
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
     plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label)
     # labelLines(axes[0, 0].get_lines(), zorder=2.5, align=True, fontsize="medium", outline_width=2)
-    labelLines(axes[1, 0].get_lines(), zorder=2.5,
-                xvals=[3.2,3.5,3.5], va="bottom",
-               align=True, fontsize="medium", outline_width=2)
+    labelLines(
+        axes[1, 0].get_lines(),
+        zorder=2.5,
+        xvals=[3.2, 3.5, 3.5],
+        va="bottom",
+        align=True,
+        fontsize="medium",
+        outline_width=2,
+    )
 
     if savefig:
-        plt.savefig(osp.join(fig_outdir, f"{gr}_dflux_{show_option}_zmin{zmin*zfactor}_zref{zref*zfactor}_talk.pdf"))
+        plt.savefig(
+            osp.join(
+                fig_outdir,
+                f"{gr}_dflux_{show_option}_zmin{zmin * zfactor}_zref{zref * zfactor}_talk.pdf",
+            )
+        )
     return fig
+
 
 def plot_BC_zprof(simgroup, gr, savefig=True):
     sims = simgroup[gr]
-    fig,axes = plt.subplots(3,2,figsize=(8,7),sharex=True,constrained_layout=True)
-    labels = {"rho":r"$n_H\,[{\rm cm^{-3}}]$",
-            "mflux":r"$\mathcal{{F}}_M\,[M_\odot{\rm \,kpc^{-2}\,yr^{-1}}]$",
-            # "pflux_MHD":r"$\mathcal{{F}}_{p,{\rm MHD}}\,[M_\odot{\rm \,(km/s)\,kpc^{-2}\,yr^{-1}}]$",
-            # "pflux_CR":r"$\mathcal{{F}}_{p,{\rm CR}}\,[M_\odot{\rm \,(km/s)\,kpc^{-2}\,yr^{-1}}]$",
-            "pflux_MHD":r"$P_{\rm MHD}\,[k_B {\rm cm^{-3}\,K}]$",
-            "pflux_CR":r"$P_{\rm c}\,[k_B {\rm cm^{-3}\,K}]$",
-            "eflux_MHD":r"$\mathcal{{F}}_{E,{\rm MHD}}\,[{\rm erg\,kpc^{-2}\,yr^{-1}}]$",
-            "eflux_CR":r"$\mathcal{{F}}_{E,{\rm c}}\,[{\rm erg\,kpc^{-2}\,yr^{-1}}]$",
+    fig, axes = plt.subplots(3, 2, figsize=(8, 7), sharex=True, constrained_layout=True)
+    labels = {
+        "rho": r"$n_H\,[{\rm cm^{-3}}]$",
+        "mflux": r"$\mathcal{{F}}_M\,[M_\odot{\rm \,kpc^{-2}\,yr^{-1}}]$",
+        # "pflux_MHD":r"$\mathcal{{F}}_{p,{\rm MHD}}\,[M_\odot{\rm \,(km/s)\,kpc^{-2}\,yr^{-1}}]$",
+        # "pflux_CR":r"$\mathcal{{F}}_{p,{\rm CR}}\,[M_\odot{\rm \,(km/s)\,kpc^{-2}\,yr^{-1}}]$",
+        "pflux_MHD": r"$P_{\rm MHD}\,[k_B {\rm cm^{-3}\,K}]$",
+        "pflux_CR": r"$P_{\rm c}\,[k_B {\rm cm^{-3}\,K}]$",
+        "eflux_MHD": r"$\mathcal{{F}}_{E,{\rm MHD}}\,[{\rm erg\,kpc^{-2}\,yr^{-1}}]$",
+        "eflux_CR": r"$\mathcal{{F}}_{E,{\rm c}}\,[{\rm erg\,kpc^{-2}\,yr^{-1}}]$",
     }
-    yscales = {"rho":"log",
-            "mflux":"linear",
-            "pflux_MHD":"log",
-            "pflux_CR":"linear",
-            "eflux_MHD":"log",
-            "eflux_CR":"linear",
-            }
-    ylims = {"rho":(1.e-3,0.5),
-            "mflux":(-0.01,0.02),
-            # "pflux_MHD":(1.e-2,20),
-            # "pflux_CR":(0,10),
-            "pflux_MHD":(1.e2,5.e4),
-            "pflux_CR":(0,2.5e4),
-            "eflux_MHD":(1.e44,1.e47),
-            "eflux_CR":(0,3.e46),
-            }
+    yscales = {
+        "rho": "log",
+        "mflux": "linear",
+        "pflux_MHD": "log",
+        "pflux_CR": "linear",
+        "eflux_MHD": "log",
+        "eflux_CR": "linear",
+    }
+    ylims = {
+        "rho": (1.0e-3, 0.5),
+        "mflux": (-0.01, 0.02),
+        # "pflux_MHD":(1.e-2,20),
+        # "pflux_CR":(0,10),
+        "pflux_MHD": (1.0e2, 5.0e4),
+        "pflux_CR": (0, 2.5e4),
+        "eflux_MHD": (1.0e44, 1.0e47),
+        "eflux_CR": (0, 3.0e46),
+    }
     axes = axes.flatten()
     for m, s in sims.items():
         density_to_nH = s.u.density.cgs / (s.u.mH * s.u.muH / au.cm**3)
-        to_pok=(((au.Msun*au.km)/(au.kpc**2*au.yr*au.s)/ac.k_B).cgs.value)
+        to_pok = ((au.Msun * au.km) / (au.kpc**2 * au.yr * au.s) / ac.k_B).cgs.value
 
         c = model_color[m]
         name = model_name[m]
@@ -4050,88 +4162,152 @@ def plot_BC_zprof(simgroup, gr, savefig=True):
         dset = update_flux(s, dset_, both=True)
         area = dset["area"].sum(dim="phase")
 
-        for ax, f in zip(axes,["rho","mflux","pflux_MHD","pflux_CR","eflux_MHD","eflux_CR"]):
+        for ax, f in zip(
+            axes, ["rho", "mflux", "pflux_MHD", "pflux_CR", "eflux_MHD", "eflux_CR"]
+        ):
             plt.sca(ax)
             ydata = dset[f].sum(dim="phase")
             if f == "rho":
-                ydata = ydata/area*density_to_nH
+                ydata = ydata / area * density_to_nH
             elif f.startswith("pflux"):
-                ydata *= to_pok/2.
-            plot_zprof_quantile(ydata,color=c,label=name)
+                ydata *= to_pok / 2.0
+            plot_zprof_quantile(ydata, color=c, label=name)
             plt.ylabel(labels[f])
             plt.yscale(yscales[f])
             plt.ylim(ylims[f])
     plt.sca(axes[0])
-    plt.legend(fontsize="small",ncols=2,reverse=True)
-    plt.setp(axes[-2:],"xlabel",r"$z\,[{\rm kpc}]$")
-    plt.savefig(os.path.join(fig_outdir,"zprof_BC.pdf"),bbox_inches="tight")
+    plt.legend(fontsize="small", ncols=2, reverse=True)
+    plt.setp(axes[-2:], "xlabel", r"$z\,[{\rm kpc}]$")
+    plt.savefig(os.path.join(fig_outdir, "zprof_BC.pdf"), bbox_inches="tight")
+
 
 def plot_Pcr_lin(zp):
-    """Plot CR pressure profiles in linear scale to better show differences between models and phases. """
-    plt.figure(figsize=(5,4))
-    plot_zprof_field(zp,"Pok_cr",["wc","hot"],color="C0",line="mean",label=r"$\langle P_{\rm c}\rangle$")
-    plot_zprof_field(zp,"Pok_cr","wc",color="C2",line="mean",label=r"$\overline{P}_{\rm c}^{\tt wc}$")
-    plot_zprof_field(zp,"Pok_cr","hot",color="C1",line="mean",label=r"$\overline{P}_{\rm c}^{\tt hot}$")
+    """Plot CR pressure profiles in linear scale to better show differences between models and phases."""
+    plt.figure(figsize=(5, 4))
+    plot_zprof_field(
+        zp,
+        "Pok_cr",
+        ["wc", "hot"],
+        color="C0",
+        line="mean",
+        label=r"$\langle P_{\rm c}\rangle$",
+    )
+    plot_zprof_field(
+        zp,
+        "Pok_cr",
+        "wc",
+        color="C2",
+        line="mean",
+        label=r"$\overline{P}_{\rm c}^{\tt wc}$",
+    )
+    plot_zprof_field(
+        zp,
+        "Pok_cr",
+        "hot",
+        color="C1",
+        line="mean",
+        label=r"$\overline{P}_{\rm c}^{\tt hot}$",
+    )
     plt.ylabel(r"$P/k_B\,[{\rm cm^{-3}\,K}]$")
     plt.xlabel(r"$z\,[{\rm kpc}]$")
-    plt.xlim(-4,4)
-    plt.axvline(-1,color="k",ls="--")
-    plt.axvline(1,color="k",ls="--")
+    plt.xlim(-4, 4)
+    plt.axvline(-1, color="k", ls="--")
+    plt.axvline(1, color="k", ls="--")
     plt.legend()
-    plt.savefig(os.path.join(fig_outdir,"Pcr_lin.pdf"), bbox_inches="tight")
+    plt.savefig(os.path.join(fig_outdir, "Pcr_lin.pdf"), bbox_inches="tight")
+
 
 def plot_PMHD_lin(sims):
-    """ Plot MHD pressure components in linear scale for better visibility of differences. """
-    for m,s in sims.items():
-        zp=update_stress(s,s.zp_ph.sel(time=s.tslice).sum(dim="vz_dir"))
-        zpw=zp.sum(dim="phase")
+    """Plot MHD pressure components in linear scale for better visibility of differences."""
+    for m, s in sims.items():
+        zp = update_stress(s, s.zp_ph.sel(time=s.tslice).sum(dim="vz_dir"))
+        zpw = zp.sum(dim="phase")
         c = model_color[m]
-        plot_zprof_field(zp,"Pok_tot",["wc","hot"],color=c,line="mean",label=r"$\langle P_{\rm MHD}\rangle$")
-        plot_zprof_field(zp,"Pok_tot","wc",color=c,line="mean",quantile=False,ls="--",label=r"$\overline{P}_{\rm MHD}^{\rm wc}$")
-        plot_zprof_field(zp,"Pok_tot","hot",color=c,line="mean",quantile=False,ls=":",label=r"$\overline{P}_{\rm MHD}^{\rm hot}$")
-        plot_zprof_field(zp,"Pok_cr",["wc","hot"],color=c,line="mean",quantile=False,lw=1,label=r"$\langle P_{\rm c}\rangle$")
+        plot_zprof_field(
+            zp,
+            "Pok_tot",
+            ["wc", "hot"],
+            color=c,
+            line="mean",
+            label=r"$\langle P_{\rm MHD}\rangle$",
+        )
+        plot_zprof_field(
+            zp,
+            "Pok_tot",
+            "wc",
+            color=c,
+            line="mean",
+            quantile=False,
+            ls="--",
+            label=r"$\overline{P}_{\rm MHD}^{\rm wc}$",
+        )
+        plot_zprof_field(
+            zp,
+            "Pok_tot",
+            "hot",
+            color=c,
+            line="mean",
+            quantile=False,
+            ls=":",
+            label=r"$\overline{P}_{\rm MHD}^{\rm hot}$",
+        )
+        plot_zprof_field(
+            zp,
+            "Pok_cr",
+            ["wc", "hot"],
+            color=c,
+            line="mean",
+            quantile=False,
+            lw=1,
+            label=r"$\langle P_{\rm c}\rangle$",
+        )
     plt.legend()
-    plt.xlim(-1,1)
+    plt.xlim(-1, 1)
     plt.ylabel(r"$P/k_B\,[{\rm cm^{-3}\,K}]$")
     plt.xlabel(r"$z\,[{\rm kpc}]$")
-    plt.xlim(-4,4)
-    plt.axvline(-1,color="k",ls="--")
-    plt.axvline(1,color="k",ls="--")
+    plt.xlim(-4, 4)
+    plt.axvline(-1, color="k", ls="--")
+    plt.axvline(1, color="k", ls="--")
     plt.legend()
-    plt.savefig(os.path.join(fig_outdir,"PMHD_lin.pdf"), bbox_inches="tight")
+    plt.savefig(os.path.join(fig_outdir, "PMHD_lin.pdf"), bbox_inches="tight")
 
-def plot_xion(s,m):
+
+def plot_xion(s, m):
     xM = 1.68e-4
     density_to_nH = s.u.density.cgs / (s.u.mH * s.u.muH / au.cm**3)
     area = s.zprof["area"].sum(dim=["vz_dir"])
     rho = s.zprof["rho"].sum(dim=["vz_dir"])
-    xion = (s.zprof["xion"].sum(dim=["vz_dir"])/area).sel(time=s.tslice)
-    xionw = (s.zprof["xion"].sum(dim=["vz_dir","phase"])/area.sum(dim="phase")).sel(time=s.tslice)
-    xionwm = (s.zprof["rho_ion"].sum(dim=["vz_dir","phase"])/rho.sum(dim="phase")).sel(time=s.tslice)
-    xionwm1 = xionwm*s.u.muH - 11*xM
-    xion_m = (s.zprof["rho_ion"].sum(dim=["vz_dir"])/rho).sel(time=s.tslice)
-    xion_m1 = xion_m*s.u.muH - 11*xM
-    xion_m2 = (xion_m*s.u.muH - 8*xM +3)/4.0
+    xion = (s.zprof["xion"].sum(dim=["vz_dir"]) / area).sel(time=s.tslice)
+    xionw = (s.zprof["xion"].sum(dim=["vz_dir", "phase"]) / area.sum(dim="phase")).sel(
+        time=s.tslice
+    )
+    xionwm = (
+        s.zprof["rho_ion"].sum(dim=["vz_dir", "phase"]) / rho.sum(dim="phase")
+    ).sel(time=s.tslice)
+    xionwm1 = xionwm * s.u.muH - 11 * xM
+    xion_m = (s.zprof["rho_ion"].sum(dim=["vz_dir"]) / rho).sel(time=s.tslice)
+    xion_m1 = xion_m * s.u.muH - 11 * xM
+    xion_m2 = (xion_m * s.u.muH - 8 * xM + 3) / 4.0
 
-    fig, axes = plt.subplots(1,2,figsize=(10,4),constrained_layout=True)
-    colors={"CNM":"C0","UNM":"C3","WNM":"C2","WHIM":"C4","HIM":"C1"}
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+    colors = {"CNM": "C0", "UNM": "C3", "WNM": "C2", "WHIM": "C4", "HIM": "C1"}
     plt.sca(axes[0])
     for ph in s.zprof.phase.data:
-        plot_zprof_quantile(xion.sel(phase=ph),color=colors[ph],label=ph)
-    plot_zprof_quantile(xionw,color="k",label="whole")
+        plot_zprof_quantile(xion.sel(phase=ph), color=colors[ph], label=ph)
+    plot_zprof_quantile(xionw, color="k", label="whole")
     plt.ylabel(r"$\langle x_i\rangle^{\rm ph}/A^{\rm ph}$")
 
-    plt.xlim(-4,4)
+    plt.xlim(-4, 4)
     plt.xlabel("z")
     plt.sca(axes[1])
     for ph in s.zprof.phase.data:
-        if ph in ["WHIM","HIM"]:
-            plot_zprof_quantile(xion_m2.sel(phase=ph),color=colors[ph],label=ph)
+        if ph in ["WHIM", "HIM"]:
+            plot_zprof_quantile(xion_m2.sel(phase=ph), color=colors[ph], label=ph)
         else:
-            plot_zprof_quantile(xion_m1.sel(phase=ph),color=colors[ph],label=ph)
-    plot_zprof_quantile(xionwm1,color="k",label="whole")
+            plot_zprof_quantile(xion_m1.sel(phase=ph), color=colors[ph], label=ph)
+    plot_zprof_quantile(xionwm1, color="k", label="whole")
     plt.ylabel(r"$\langle n_i\rangle^{\rm ph}/\langle n_H\rangle^{\rm ph}$")
-    plt.xlim(-4,4)
+    plt.xlim(-4, 4)
     plt.xlabel("z")
     plt.legend()
-    plt.savefig(os.path.join(fig_outdir,"xion.pdf"), bbox_inches="tight")
+    plt.savefig(os.path.join(fig_outdir, "xion.pdf"), bbox_inches="tight")

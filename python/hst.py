@@ -343,7 +343,9 @@ class Hst:
                 idx = np.where(time.diff() <= 0)[0]
             n_discont = len(idx)
             if self.verbose and n_discont > 0:
-                self.logger.info(f"[read_hst]: found {n_discont} overlapped time ranges")
+                self.logger.info(
+                    f"[read_hst]: found {n_discont} overlapped time ranges"
+                )
         if not sn:
             if "time_code" in h:
                 h.index = h["time_code"]
