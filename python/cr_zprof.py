@@ -5,6 +5,9 @@ import glob
 import xarray as xr
 import numpy as np
 
+import astropy.units as au
+import astropy.constants as ac
+
 from scipy.optimize import curve_fit
 
 model_name = {
@@ -630,3 +633,117 @@ def update_flux(s, dset_, vz_dir=None, both=False):
         dset = dset.sum(dim="vz_dir")
 
     return dset
+
+def get_cr_velocities(s, zp, zpp):
+    vmax = s.par["cr"]["vmax"] / s.u.velocity.cgs.value
+    #all, net
+    zp_ = zp.sum(dim=["phase","vz_dir"])
+    zpp_ = zpp.sum(dim=["phase","vz_dir"])
+    Pcr = (zp_["0-Ec"]/3.).interp(time=zpp.time)
+    # vol-weighed
+    vel_all = dict()
+    vel_all["vz"]=zp_["vel3"]/zp_["area"]
+    vel_all["vs"]=zp_["0-Vs3"]/zp_["area"]
+    vel_all["vd"]=zp_["0-Vd3"]/zp_["area"]
+    vel_all["vcr"]=zp_["0-Veff3"]/zp_["area"]
+    vel_all["vd_mag"]=zpp_["0-Vd3_mag"]/zpp_["area"]
+    # mass-weighted, vz
+    vel_all_w = dict()
+    vel_all_w["vz"]=zp_["mom3"]/zp_["rho"]
+    # PCR-weighted
+    vel_all_w["va"]=zpp_["0-Fc3_adv"]/(4*Pcr)
+    vel_all_w["vs"]=zpp_["0-Fc3_stream"]/(4*Pcr)
+    vel_all_w["vd"]=zpp_["0-Fc3_diff"]/(4*Pcr)
+    vel_all_w["vd_mag"]=zpp_["0-Fc3_diff_mag"]/(4*Pcr)
+    vel_all_w["vcr"]=vmax*zp_["0-Fc3"]/(4*zp_["0-Ec"]/3.)
+
+    #wc, net
+    zp_ = zp.sel(phase=["CNM","UNM","WNM"]).sum(dim=["phase","vz_dir"])
+    zpp_ = zpp.sel(phase=["CNM","UNM","WNM"]).sum(dim=["phase","vz_dir"])
+    Pcr = (zp_["0-Ec"]/3.).interp(time=zpp.time)
+    # vol-weighted
+    vel_wc = dict()
+    vel_wc["vz"]=zp_["vel3"]/zp_["area"]
+    vel_wc["vs"]=zp_["0-Vs3"]/zp_["area"]
+    vel_wc["vd"]=zp_["0-Vd3"]/zp_["area"]
+    vel_wc["vcr"]=zp_["0-Veff3"]/zp_["area"]
+    vel_wc["vd_mag"]=zpp_["0-Vd3_mag"]/zpp_["area"]
+    # mass-weighted
+    vel_wc_w = dict()
+    vel_wc_w["vz"]=zp_["mom3"]/zp_["rho"]
+    # PCR-weighted
+    vel_wc_w["va"]=zpp_["0-Fc3_adv"]/(4*Pcr)
+    vel_wc_w["vs"]=zpp_["0-Fc3_stream"]/(4*Pcr)
+    vel_wc_w["vd"]=zpp_["0-Fc3_diff"]/(4*Pcr)
+    vel_wc_w["vd_mag"]=zpp_["0-Fc3_diff_mag"]/(4*Pcr)
+    vel_wc_w["vcr"]=vmax*zp_["0-Fc3"]/(4*zp_["0-Ec"]/3.)
+
+    #all, out
+    zp_ = zp.sel(vz_dir=1).sum(dim=["phase"])
+    zpp_ = zpp.sel(vz_dir=1).sum(dim=["phase"])
+    Pcr = (zp_["0-Ec"]/3.).interp(time=zpp.time)
+    # vol-weighed
+    vel_all_out = dict()
+    vel_all_out["vz"]=zp_["vel3"]/zp_["area"]
+    vel_all_out["vs"]=zp_["0-Vs3"]/zp_["area"]
+    vel_all_out["vd"]=zp_["0-Vd3"]/zp_["area"]
+    vel_all_out["vcr"]=zp_["0-Veff3"]/zp_["area"]
+    vel_all_out["vd_mag"]=zpp_["0-Vd3_mag"]/zpp_["area"]
+    # mass-weighted, vz
+    vel_all_out_w = dict()
+    vel_all_out_w["vz"]=zp_["mom3"]/zp_["rho"]
+    # PCR-weighted
+    vel_all_out_w["va"]=zpp_["0-Fc3_adv"]/(4*Pcr)
+    vel_all_out_w["vs"]=zpp_["0-Fc3_stream"]/(4*Pcr)
+    vel_all_out_w["vd"]=zpp_["0-Fc3_diff"]/(4*Pcr)
+    vel_all_out_w["vd_mag"]=zpp_["0-Fc3_diff_mag"]/(4*Pcr)
+    vel_all_out_w["vcr"]=vmax*zp_["0-Fc3"]/(4*zp_["0-Ec"]/3.)
+
+    #wc, out
+    zp_ = zp.sel(phase=["CNM","UNM","WNM"],vz_dir=1).sum(dim=["phase"])
+    zpp_ = zpp.sel(phase=["CNM","UNM","WNM"],vz_dir=1).sum(dim=["phase"])
+    Pcr = (zp_["0-Ec"]/3.).interp(time=zpp.time)
+    # vol-weighted
+    vel_wc_out = dict()
+    vel_wc_out["vz"]=zp_["vel3"]/zp_["area"]
+    vel_wc_out["vs"]=zp_["0-Vs3"]/zp_["area"]
+    vel_wc_out["vd"]=zp_["0-Vd3"]/zp_["area"]
+    vel_wc_out["vcr"]=zp_["0-Veff3"]/zp_["area"]
+    vel_wc_out["vd_mag"]=zpp_["0-Vd3_mag"]/zpp_["area"]
+    # mass-weighted
+    vel_wc_out_w = dict()
+    vel_wc_out_w["vz"]=zp_["mom3"]/zp_["rho"]
+    # PCR-weighted
+    vel_wc_out_w["va"]=zpp_["0-Fc3_adv"]/(4*Pcr)
+    vel_wc_out_w["vs"]=zpp_["0-Fc3_stream"]/(4*Pcr)
+    vel_wc_out_w["vd"]=zpp_["0-Fc3_diff"]/(4*Pcr)
+    vel_wc_out_w["vd_mag"]=zpp_["0-Fc3_diff_mag"]/(4*Pcr)
+    vel_wc_out_w["vcr"]=vmax*zp_["0-Fc3"]/(4*zp_["0-Ec"]/3.)
+
+    return dict(all_v=vel_all,wc_v=vel_wc,
+                all_w=vel_all_w,wc_w=vel_wc_w,
+                all_out_v=vel_all_out, wc_out_v=vel_wc_out,
+                all_out_w=vel_all_out_w, wc_out_w=vel_wc_out_w)
+
+def vceff_z(s,Ssfr=5.e-3,Pcr=1.e4,fc=0.1,fW=0):
+    Esn = s.par["feedback"]["E_inj"]*1.e51*au.erg
+    dage = s.pop_synth["age"][1]
+    mstar = 1/(s.pop_synth["snrate"]*dage).sum()*au.M_sun
+    Ssfr0 = Ssfr*au.M_sun/au.kpc**2/au.yr
+    Pc0 = Pcr*ac.k_B*au.cm**-3*au.K
+    return (fc+fW)*(Esn*Ssfr0/mstar/8.0/Pc0).to("km/s")
+
+def Pcmid(s,Ssfr=5.e-3,vceff_z=30,fc=0.1,fW=0):
+    Esn = s.par["feedback"]["E_inj"]*1.e51*au.erg
+    dage = s.pop_synth["age"][1]
+    mstar = 1/(s.pop_synth["snrate"]*dage).sum()*au.M_sun
+    Ssfr0 = Ssfr*au.M_sun/au.kpc**2/au.yr
+    vc = vceff_z*au.km/au.s
+    return (fc+fW)*(Esn*Ssfr0/mstar/8.0/vc/ac.k_B).cgs
+
+def Upsilon_c(s,vceff_z=30,fc=0.1,fW=0):
+    Esn = s.par["feedback"]["E_inj"]*1.e51*au.erg
+    dage = s.pop_synth["age"][1]
+    mstar = 1/(s.pop_synth["snrate"]*dage).sum()*au.M_sun
+    vc = vceff_z*au.km/au.s
+    return (fc+fW)*(Esn/mstar/8.0/vc).to("km/s")

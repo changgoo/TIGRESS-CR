@@ -95,7 +95,7 @@ class PostProcessingZprof:
         vdiff_rot = rotate_vector(angles, vdiff)
 
         # final results
-        fd_b = 4.0 / 3.0 * ec * np.abs(vdiff_rot[0])
+        fd_b = 4.0 / 3.0 * ec * vdiff_rot[0]
         return fd_b
 
     def Gamma_cr_stream(self, data):
@@ -131,6 +131,38 @@ class PostProcessingZprof:
 
         return heating
 
+    def Gamma_cr_scattering_stream(self, data):
+        """CR streaming heating along B field direction
+        (v_s,perp is zero if B is turned on)
+        """
+        # vmax in code units
+        vlim = self.par["cr"]["vmax"] / self.u.velocity.cgs.value
+        invlim = 1 / vlim
+
+        # B vector for angle
+        Bcc = [data[f] for f in ["Bcc1", "Bcc2", "Bcc3"]]
+
+        # vector to rotate
+        fc = [data[f] * vlim for f in ["0-Fc1", "0-Fc2", "0-Fc3"]]
+        vel = [data[f] for f in ["vel1", "vel2", "vel3"]]
+        vs = [data[f] for f in ["0-Vs1", "0-Vs2", "0-Vs3"]]
+
+        # other variables
+        ec = data["0-Ec"]
+        sigma_diff = data["0-Sigma_diff1"]
+
+        # rotation
+        angles = get_b_angle(*Bcc)
+        fc_rot = rotate_vector(angles, fc)
+        vel_rot = rotate_vector(angles, vel)
+        vs_rot = rotate_vector(angles, vs)
+
+        # final results
+        sigma_para = invlim * sigma_diff
+        heating = -vs_rot[0] * sigma_para * (fc_rot[0] - 4.0 / 3.0 * ec * (vel_rot[0] + vs_rot[0]))
+
+        return heating
+
     def GradPcr_parallel(self, data):
         """CR pressure gradient along B field direction (assuming steady state flux)"""
         # vmax in code units
@@ -141,7 +173,7 @@ class PostProcessingZprof:
         kappac = vlim / sigma_diff
 
         # final results
-        return fd_b / kappac
+        return -fd_b / kappac
 
     def CRLosses(self, data, ng=0):
         # this is done for single-bin approximation
@@ -236,6 +268,42 @@ class PostProcessingZprof:
         else:
             return work_para + work_perp
 
+    def CRwork_scattering(self, data, ng=0, split=False):
+        # vmax in code units
+        vlim = self.par["cr"]["vmax"] / self.u.velocity.cgs.value
+        invlim = 1 / vlim
+
+        # B vector for angle
+        Bcc = [data[f] for f in ["Bcc1", "Bcc2", "Bcc3"]]
+
+        # vector to rotate
+        fc = [data[f] * vlim for f in ["0-Fc1", "0-Fc2", "0-Fc3"]]
+        vel = [data[f] for f in ["vel1", "vel2", "vel3"]]
+        vs = [data[f] for f in ["0-Vs1", "0-Vs2", "0-Vs3"]]
+
+        # other variables
+        ec = data["0-Ec"]
+        sigma_diff = data["0-Sigma_diff1"]
+
+        # rotation
+        angles = get_b_angle(*Bcc)
+        fc_rot = rotate_vector(angles, fc)
+        vel_rot = rotate_vector(angles, vel)
+        vs_rot = rotate_vector(angles,vs)
+
+        # final results
+        sigma_para = invlim * sigma_diff
+        sigma_perp = invlim * sigma_diff * self.par["cr"]["perp_to_par_diff"]
+
+        work_para = -vel_rot[0] * sigma_para * (fc_rot[0] - 4.0 / 3.0 * ec * (vel_rot[0]+vs_rot[0]))
+        work_perp = -vel_rot[1] * sigma_perp * (fc_rot[1] - 4.0 / 3.0 * ec * vel_rot[1])
+        work_perp += -vel_rot[2] * sigma_perp * (fc_rot[2] - 4.0 / 3.0 * ec * vel_rot[2])
+
+        if split:
+            return work_para, work_perp
+        else:
+            return work_para + work_perp
+
     def EffecitveCRvelocity(self, data, dir=1):
         """Effective CR velocity along B field direction"""
         # vmax in code units
@@ -244,21 +312,27 @@ class PostProcessingZprof:
         ec = data["0-Ec"]
         return data[f"0-Fc{dir}"] * vlim / (4.0 / 3.0 * ec)
 
-    def CRweighted_velocity(self, data, dir=1):
+    def Fcr_adv(self, data, dir=1):
         """Ecr weighted velocity"""
         # vmax in code units
         vlim = self.par["cr"]["vmax"] / self.u.velocity.cgs.value
 
         ec = data["0-Ec"]
-        return ec * data[f"vel{dir}"]
+        return 4.0/3.0 * ec * data[f"vel{dir}"]
 
-    def CRweighted_vstream(self, data, dir=1):
+    def Fcr_stream(self, data, dir=1):
         """Ecr weighted velocity"""
         # vmax in code units
-        vlim = self.par["cr"]["vmax"] / self.u.velocity.cgs.value
 
         ec = data["0-Ec"]
-        return ec * data[f"0-Vs{dir}"]
+        return 4.0/3.0 * ec * data[f"0-Vs{dir}"]
+
+    def Fcr_diff(self, data, dir=1):
+        """Ecr weighted velocity"""
+        # vmax in code units
+
+        ec = data["0-Ec"]
+        return 4.0/3.0 * ec * data[f"0-Vd{dir}"]
 
     def GetAreaForPhaseAndVz(self, data, phase, nph=0, vz_dir=1):
         """Area of the face where vz_dir*Vz>0 and phase=nph
@@ -285,8 +359,12 @@ class PostProcessingZprof:
         results["0-Veff3"] = self.EffecitveCRvelocity(data, dir=3)
         # CR energy weighted velocity
         for dir_ in [1, 2, 3]:
-            results[f"0-Ec_vel{dir_}"] = self.CRweighted_velocity(data, dir=dir_)
-            results[f"0-Ec_vs{dir_}"] = self.CRweighted_vstream(data, dir=dir_)
+            results[f"0-Fc{dir_}_adv"] = self.Fcr_adv(data, dir=dir_)
+            results[f"0-Fc{dir_}_stream"] = self.Fcr_stream(data, dir=dir_)
+            results[f"0-Fc{dir_}_diff"] = self.Fcr_diff(data, dir=dir_)
+            results[f"0-Fc{dir_}_diff_mag"] = np.abs(self.Fcr_diff(data, dir=dir_))
+            results[f"0-Vd{dir_}_mag"] = np.abs(data[f"0-Vd{dir_}"])
+
 
         return results
 
