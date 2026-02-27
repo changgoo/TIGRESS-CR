@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # basic imports
+from pyexpat import model
 import sys
 import os.path as osp
 import numpy as np
@@ -9,7 +10,7 @@ import cmasher as cmr
 import cmcrameri
 
 # data loader
-from cr_zprof import cr_data_load, load_group, load_windpdf, load_velocity_pdfs
+from cr_zprof import cr_data_load, load_group, load_windpdf, load_velocity_pdfs,load_kappa_pdfs
 from load_sim_tigresspp import LoadSimTIGRESSPP, LoadSimTIGRESSPPAll
 
 # plotting scripts
@@ -70,14 +71,52 @@ def load(verbose=True):
     load_group(simgroup, group)
     for m, s in sims.items():
         # zp = s.load_zprof_postproc()
-        s.tslice = tslice[m]
+        s.tslice_Myr = tslice[m]
+        s.tslice = slice(s.tslice_Myr.start / s.u.Myr, s.tslice_Myr.stop / s.u.Myr)
         load_windpdf(s, both=True)
         if s.options["cosmic_ray"]:
             load_velocity_pdfs(s, xf = "T")
+            zp_pp=s.load_zprof_postproc()
 
     # setup for plotting scripts
     ps.setup(outdir, model_name, model_color)
 
+def load_lowres(verbose=True):
+    # find models
+    model_dict = cr_data_load(basedir, pattern="crmhd-16pc*")
+
+    # rename
+    model_orig = list(model_dict.keys())
+    model_reduce = [m.replace("crmhd-16pc-b1-","").replace("-sigma_selfc-Vmax2","") for m in model_orig]
+    colors = ["xkcd:blue","xkcd:azure","xkcd:purple","xkcd:lavender","xkcd:red","xkcd:salmon"]
+    model_dict_new = dict()
+
+    model_color_new = dict()
+    for (m, d), mnew, c in zip(model_dict.items(),model_reduce,colors):
+        model_dict_new[mnew]=d
+        model_color_new[mnew]=c
+    model_name_new={'diode-diode': 'diode',
+            'diode-diode-tall': 'diode-tall',
+            'diode-lngrad_out': 'mix',
+            'diode-lngrad_out-tall': 'mix-tall',
+            'lngrad_out-lngrad_out': 'lngrad',
+            'lngrad_out-lngrad_out-tall': 'lngrad-tall'}
+    # load simulations
+    sa = LoadSimTIGRESSPPAll(model_dict_new)
+
+    global simgroup
+    group = "lowres"
+    simgroup[group] = {m: sa.set_model(m, verbose=verbose) for m in model_reduce}
+    sims = simgroup[group]
+
+    # load data
+    load_group(simgroup, group)
+    for m, s in sims.items():
+        s.tslice_Myr = slice(200,500)
+        s.tslice = slice(s.tslice_Myr.start / s.u.Myr, s.tslice_Myr.stop / s.u.Myr)
+
+    # setup for plotting scripts
+    ps.setup("../fig_bcs", model_name_new, model_color_new)
 
 def draw_figures(num="all"):
     global simgroup
@@ -113,13 +152,7 @@ def draw_figures(num="all"):
 
     if num == "all" or num == 6:
         # velocities
-        f=ps.plot_velocity_z(simgroup, group, ph="wc")
-        f.axes[0].set_ylim(top=75)
-        f.savefig(osp.join(ps.fig_outdir, f"{group}_velocity_z_wc.pdf"))
-        # f=ps.plot_velocity_z(simgroup, group, ph="wc", upper=False)
-        # f.axes[0].set_ylim(bottom=-75)
-        # f.savefig(osp.join(ps.fig_outdir, f"{group}_velocity_z_wc_lower.pdf"))
-        ps.plot_velocity_z(simgroup, group, ph="hot")
+        f=ps.plot_cr_velocity_z(simgroup,group,both=True)
 
     if num == "all" or num == 7:
         # kappa
@@ -152,11 +185,11 @@ def draw_figures(num="all"):
 
     if num == "all" or num == 11:
         # loading
-        ps.plot_loading_z(simgroup, group, vz_dir=None, both=True)
+        ps.plot_loading_z_merged(simgroup, group, vz_dir=None, both=True)
 
     if num == "all" or num == 12:
         # momentum transfer
-        ps.plot_momentum_transfer_z(simgroup, group, show_option=1)
+        ps.plot_momentum_transfer_z(simgroup, group, show_option=1, zmin=0, zref=1000)
 
     if num == "all" or num == 13:
         # joint pdfs
@@ -166,6 +199,17 @@ def draw_figures(num="all"):
     if num == "all" or num == 14:
         # pdfs
         ps.plot_voutpdf(simgroup, group)
+
+    if num == "all" or num == 15:
+        # dynamically controlled transport
+        for m, s in sims.items():
+            if s.options["cosmic_ray"]:
+                ps.plot_crgain_cumsum(s, m)
+
+                # will not be used in the paper, but just for checking
+                load_velocity_pdfs(s, xf = "T")
+                load_kappa_pdfs(s,xf="T",yf="sigma_para")
+                ps.plot_velocity_T(s, m)
 
     if num == "all" or num == 3:
         plt.close("all")
@@ -206,9 +250,11 @@ def draw_figures(num="all"):
     if num == "all" or num == 4:
         sim = sims[model_default[1]]
         # adjust label, norm, etc
+        sim.dfi["Vcr_mag"]["label_name"] = "$|v_{\\rm c}|$"
         sim.dfi["pok_trbz"]["label_name"] = "$P_{\\rm kin}$"
         sim.dfi["pok"]["label_name"] = "$P_{\\rm th}$"
-        sim.dfi["pok_mag"]["label_name"] = "$P_{\\rm B}$"
+        sim.dfi["pok_mag"]["label_name"] = "$P_{\\rm mag}$"
+        sim.dfi["pok_cr"]["label_name"] = "$P_{\\rm c}$"
         sim.dfi["vmag"]["label_name"] = "$|v|$"
         sim.dfi["pok_cr"]["imshow_args"]["norm"] = LogNorm(5.0e1, 5.0e4)
         for pok_field in ["pok", "pok_mag", "pok_trbz", "pok_cr"]:
@@ -226,7 +272,11 @@ def draw_figures(num="all"):
             fig = plot_slices_cr(sim, snapshot_nums["crmhd"][1], kpc=True, hideaxes=False)
             fig.savefig(osp.join(outdir, "snapshot_quiet.png"))
 
-
+def draw_figures_appendix(simgroup,group):
+    f=ps.plot_history(simgroup,group)
+    f=ps.plot_pressure_t(simgroup,group)
+    f=ps.plot_pressure_z(simgroup,group)
+    f=ps.plot_area_mass_fraction_z(simgroup,group)
 if __name__ == "__main__":
     load()
     if len(sys.argv) > 1:
