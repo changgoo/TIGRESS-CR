@@ -353,10 +353,25 @@ class Hst:
                 h.index = h["time"]
         return h
 
+    def merge_hst(self, hold=None, hnew=None):
+        h = self.hst
+        if hold is not None:
+            t0 = h.index[0]
+            hearly = hold[hold.index < t0]
+            hmerge = pd.concat([hearly, h])
+            hmerge.loc[t0:, "Sigma_out"] = (
+                hmerge["Sigma_out"].loc[t0:]
+                - hmerge["Sigma_out"].loc[t0]
+                + hearly["Sigma_out"].iloc[-1]
+            )
+        if hnew is not None:
+            hmerge = pd.concat([h[h.index < hnew.index[0]], hnew])
+
+        self.hst = hmerge
+        return self.hst
+
 
 def get_snr(sntime, time, tbin="auto", snth=100.0):
-    import xarray as xr
-
     snt = sntime.to_numpy()
     t = time.to_numpy()
     if tbin == "auto":
