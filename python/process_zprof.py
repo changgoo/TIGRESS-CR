@@ -8,7 +8,7 @@ if __name__ == "__main__":
     spp = LoadSimTIGRESSPP(sys.argv[1], verbose=COMM.rank == 0)
 
     mynums = [spp.nums[i] for i in range(len(spp.nums)) if i % COMM.size == COMM.rank]
-    print(COMM.rank, mynums)
+    spp.logger.info(f"rank: {COMM.rank}, mynums: {mynums}")
     for num in mynums:
         gc.collect()
         zprof = spp.load_zprof_postproc_one(num, force_override=False)

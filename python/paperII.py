@@ -16,34 +16,19 @@ from plot_slices import plot_snapshot_comp, plot_slices_cr
 
 # set directories (on stellar)
 basedir = "/scratch/gpfs/changgoo/tigress_classic/"
-outdir = "../paperII_figures"
-
-# slices
-tslice = slice(150, 500)
-zslice = slice(-50, 50)
-
-# sim group
-simgroup = dict()
-model_name = dict()
-model_color = dict()
 
 
-def load(model_dict, verbose=True):
-    global simgroup, model_name, model_color
+def load(model_dict, gr, tslice=slice(200, 500), colors=None, verbose=True):
+    simgroup = dict()
+    model_name = dict()
+    model_color = dict()
 
-    # initialize simgroup
-    groups = ["vAi", "vAtot", "nost", "sigma28", "sigma29", "crmhd-b", "crmhd"]
-    for gr in groups:
-        simgroup[gr] = dict()
+    simgroup[gr] = dict()
 
     # categorize models
     mlist = []
     for k, d in model_dict.items():
-        try:
-            sim = LoadSimTIGRESSPP(d, verbose=verbose)
-        except:
-            print(f"Failed to load {k} at {d}")
-            continue
+        sim = LoadSimTIGRESSPP(d, verbose=verbose)
         par = sim.par
         base_split = sim.basename.split("-")
         model = []
@@ -67,33 +52,39 @@ def load(model_dict, verbose=True):
                 model.append(f"b{par['problem']['beta0']}")
             if par["cr"]["vmax"] != 2.0e9:
                 model.append(f"Vmax{int(par['cr']['vmax'] / 1.0e9)}")
-        if "rst" in base_split[-1]:
-            model.append(base_split[-1])
+        # if "rst" in base_split[-1]:
+        #     model.append(base_split[-1])
         newkey = "-".join(model)
 
-        if newkey in mlist:
-            print(f"{newkey} is already there")
-        else:
-            for gr in groups:
-                if gr in newkey:
-                    simgroup[gr][newkey] = sim
         mlist.append(newkey)
-        model_name[newkey] = newkey
-        if verbose:
-            print(f"Renamed {k} --> {newkey}")
+        model_name[newkey] = newkey.replace("sigma", "σ").replace("-vAi", "")
+
+        print(f"Renamed {k} --> {newkey}: {model_name[newkey]}")
+        simgroup[gr][newkey] = sim
 
     # load data/ assign colors
     for group in simgroup:
         load_group(simgroup, group)
-        # for m, s in simgroup[group].items():
-        #     s.tslice = tslice[m]
-        #     load_windpdf(s, both=True)
-        for i, k in enumerate(simgroup[group]):
-            if k not in model_color:
-                model_color[k] = f"C{i}"
+        for i, (m, s) in enumerate(simgroup[group].items()):
+            if isinstance(tslice, dict):
+                s.tslice_Myr = tslice[m]
+            else:
+                s.tslice_Myr = tslice
+            s.tslice = slice(s.tslice_Myr.start / s.u.Myr, s.tslice_Myr.stop / s.u.Myr)
 
-    # setup for plotting scripts
-    ps.setup(outdir, model_name, model_color)
+            load_windpdf(s, both=True)
+            # zp_pp = s.load_zprof_postproc()
+
+            if colors is None:
+                model_color[m] = f"C{i}"
+            else:
+                model_color[m] = colors[i]
+
+            print(
+                f"Loaded {m} in group {group} with name {model_name[m]} and color {model_color[m]}"
+            )
+
+    return simgroup, model_name, model_color
 
 
 if __name__ == "__main__":

@@ -2305,7 +2305,7 @@ def plot_gainloss_z_each(
             plt.title(f"ph={ph}")
         for f, c in zip(
             ["cool_rate", "heat_rate", "cr_heating", "cr_work", "grav_work"],
-            ["xkcd:teal", "xkcd:coral", "C2", "C3", "C4"],
+            ["C0", "C1", "C2", "C3", "C4"],
         ):
             kwargs = dict(label=labels[f])
             if f == "grav_work":
@@ -2317,7 +2317,7 @@ def plot_gainloss_z_each(
         plt.sca(axs[1])
         for f, c in zip(
             ["cr_loss", "CRinj_rate", "cr_heating", "cr_work"],
-            ["C0", "C1", "C2", "C3"],
+            ["xkcd:teal", "xkcd:coral", "C2", "C3"],
         ):
             kwargs = dict(ls=":" if name == "mhd" else "-", label=labels[f])
             if f == "CRinj_rate":
@@ -3493,13 +3493,19 @@ def plot_crgain_cumsum(s, m, savefig=True):
         s.u.energy_flux
     ).cgs.value
     dset["cr_loss"] = -dset["0-cooling_cr"] * dz / area * (s.u.energy_flux).cgs.value
-    dset["cr_heating"] = -dset["0-heating_cr"] * dz / area * (s.u.energy_flux).cgs.value
+    if "0-heating_cr" in dset:
+        dset["cr_heating"] = (
+            -dset["0-heating_cr"] * dz / area * (s.u.energy_flux).cgs.value
+        )
+        crheating = get_cumsum_both(s, dset["cr_heating"])
+    else:
+        crheating = 0.0
     dset["cr_flux"] = vmax_kms * dset["0-Fc3"] / area * (s.u.energy_flux).cgs.value
     crwork = get_cumsum_both(s, dset["cr_work"])
     crinj = get_cumsum_both(s, dset["CRinj_rate"])
     crloss = get_cumsum_both(s, dset["cr_loss"])
-    crheating = get_cumsum_both(s, dset["cr_heating"])
     crflux = get_sum_both(s, dset["cr_flux"])
+    crfin = crwork + crinj - crheating - crloss
 
     dt = 0.1
     mstar = 1 / np.sum(s.pop_synth["snrate"] * dt) * au.M_sun
@@ -3538,6 +3544,8 @@ def plot_crgain_cumsum(s, m, savefig=True):
             labels,
         )
     ):
+        if isinstance(flx, float):
+            continue
         plot_zprof_mean_quantile(
             flx.sum(dim="phase") / sinj,
             label=lab,
@@ -3582,6 +3590,8 @@ def plot_velocity_T(s, m, mean="linear", sigma=False, savefig=True):
         "Vtotz": r"$v_z+v_{{\rm s},z}$",
     }
     for i, vf in enumerate(vel_fields):
+        if vf == "0-Vs3" and s.par["cr"]["valfven_flag"] == -1:
+            continue
         pdf = vel_pdfs[vf].sel(time=s.tslice)
         vf_ = f"log_{vf}"
         # get mean in linear space
@@ -3664,64 +3674,99 @@ def plot_velocity_T(s, m, mean="linear", sigma=False, savefig=True):
     plt.savefig(os.path.join(fig_outdir, f"{name}_vT_{mean}.pdf"), bbox_inches="tight")
 
 
-def plot_cr_velocity_z(simgroup, gr, both=True, kpc=True, savefig=True):
-    fig, axs = plt.subplots(1, 2, figsize=(8, 3.5), constrained_layout=True)
-    sims = simgroup[gr]
+def plot_cr_velocity_z_all(simgroup, group, both=True, kpc=True, savefig=True):
+    # cr velocities
+    labels = {
+        "vz": r"$v_{z}$",
+        "va": r"$v_{z}$",
+        "vs": r"$v_{{\rm s},z}$",
+        "vd": r"$v_{{\rm d},z}$",
+        "vd_mag": r"$|v_{{\rm d},z}|$",
+        "vcr": r"$v_{{\rm c},z}$",
+    }
 
-    # vertical velocity
-    plt.sca(axs[0])
-    for m, s in sims.items():
-        s = sims[m]
+    fig, axes = plt.subplots(
+        4,
+        1,
+        figsize=(4, 8),
+        sharex=True,
+        constrained_layout=True,
+    )
+    for m, s in simgroup[group].items():
         c = model_color[m]
-        zpsel = s.zp_ph.sel(time=s.tslice)
-        vnet_u, vnet_l = fold_avg_vel(zpsel[["vel3", "area"]], both=both)
-        vout_u, vout_l = fold_avg_vel(zpsel[["vel3", "area"]], vz_dir=1, both=both)
-        if both:
-            vnet = vnet_u - vnet_l
-            vout = vout_u - vout_l
-        else:
-            vnet = vnet_u
-            vout = vout_u
-        ph = "wc"
-        plot_zprof_quantile(
-            vout["vel3"].sel(phase=ph), color=c, label=f"{model_name[m]}, out"
+        name = model_name[m]
+        zp_ = s.zp_ph.sel(time=s.tslice).sum(dim=["phase"])
+        zp_ = zp_.assign_coords(time=zp_.time.astype(int))
+        zpp_ = s.zp_pp_ph.sel(time=s.tslice).sum(dim=["phase"])
+        zpp_ = zpp_.assign_coords(time=zpp_.time.astype(int))
+        cr_vel_u1, cr_vel_l1 = fold_avg_vel(
+            zp_[["rho", "0-Ec", "mom3", "0-Fc3", "area"]], both=both
         )
+        cr_vel_u2, cr_vel_l2 = fold_avg_vel(
+            zpp_[
+                [
+                    "0-Fc3_adv",
+                    "0-Fc3_stream",
+                    "0-Fc3_diff",
+                    "0-Fc3_diff_mag",
+                    "area",
+                ]
+            ],
+            both=both,
+        )
+        if both:
+            cr_vel = cr_vel_u1[["rho", "0-Ec"]] + cr_vel_l1[["rho", "0-Ec"]]
+            cr_vel.update(cr_vel_u1[["mom3", "0-Fc3"]] - cr_vel_l1[["mom3", "0-Fc3"]])
+            cr_vel.update(
+                cr_vel_u2[["0-Fc3_adv", "0-Fc3_stream", "0-Fc3_diff"]]
+                - cr_vel_l2[["0-Fc3_adv", "0-Fc3_stream", "0-Fc3_diff"]]
+            )
+            cr_vel.update(cr_vel_u2[["0-Fc3_diff_mag"]] + cr_vel_l2[["0-Fc3_diff_mag"]])
+        else:
+            cr_vel = cr_vel_u1
+            cr_vel.update(cr_vel_u2)
+
+        vmax = s.par["cr"]["vmax"] / s.u.velocity.cgs.value
+        Pcr = cr_vel["0-Ec"] / 3.0
+        cr_vel["vz"] = cr_vel["mom3"] / cr_vel["rho"]
+        cr_vel["va"] = cr_vel["0-Fc3_adv"] / (4 * Pcr)
+        cr_vel["vs"] = cr_vel["0-Fc3_stream"] / (4 * Pcr)
+        cr_vel["vd"] = cr_vel["0-Fc3_diff"] / (4 * Pcr)
+        cr_vel["vd_mag"] = cr_vel["0-Fc3_diff_mag"] / (4 * Pcr)
+        cr_vel["vcr"] = vmax * cr_vel["0-Fc3"] / (4 * Pcr)
+
+        for vf, ax in zip(["va", "vs", "vd_mag", "vcr"], axes):
+            plt.sca(ax)
+            plot_zprof_quantile(cr_vel[vf], color=c, label=name)
+            plt.ylabel(labels[vf] + r"$\,[{\rm km/s}]$")
+            plt.xlim(0, 4)
+
         plot_zprof_quantile(
-            vnet["vel3"].sel(phase=ph),
+            cr_vel["va"] + cr_vel["vs"],
             color=c,
-            label=f"{model_name[m]}, net",
             ls=":",
             quantile=False,
         )
-        # zpsel = s.zp_ph.sel(time=s.tslice)
-        # dnet = zpsel.sel(z=slice(0, zpsel.z.max())).sum(dim="vz_dir")
-        # dout = zpsel.sel(z=slice(0, zpsel.z.max()), vz_dir=1)
-        # ph="wc"
-        # plot_zprof_field(
-        #     dout, "vel3", ph, color=c, line="median", label=f"{model_name[m]}, out"
-        # )
-        # plot_zprof_field(
-        #     dnet,
-        #     "vel3",
-        #     ph,
-        #     color=c,
-        #     line="median",
-        #     quantile=False,
-        #     ls=":",
-        #     label=f"{model_name[m]}, net"
-        # )
-        plt.xlim(0, 4)
-        plt.ylim(-20, 70)
+    plt.sca(axes[2])
+    plt.legend()
+    plt.sca(axes[-1])
+    zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
 
+    if both:
+        plt.xlabel(r"$|z|$" + zunit_label)
+    else:
+        plt.xlabel(r"$z$" + zunit_label)
+
+    if savefig:
+        plt.savefig(
+            os.path.join(fig_outdir, f"{group}_cr_velocity_z_all.pdf"),
+            bbox_inches="tight",
+        )
+    return fig
+
+
+def plot_cr_velocity_z_each(s, m, both=True, kpc=True, ls="-"):
     # cr velocities
-    plt.sca(axs[1])
-    labels_w_def = {
-        "vz": r"$v_{z}\equiv \langle F_{{\rm a},z}\rangle/\langle 4P_{\rm c}\rangle$",
-        "va": r"$v_{z}\equiv \langle F_{{\rm a},z}\rangle/\langle 4P_{\rm c}\rangle$",
-        "vs": r"$v_{{\rm s},z}\equiv \langle F_{{\rm s},z}\rangle/\langle 4P_{\rm c}\rangle$",
-        "vd_mag": r"$v_{{\rm d},z}\equiv \langle |F_{{\rm d},z}|\rangle/\langle 4P_{\rm c}\rangle$",
-        "vcr": r"$v_{{\rm c},z}\equiv \langle F_{{\rm c},z}\rangle/\langle 4P_{\rm c}\rangle$",
-    }
     labels = {
         "vz": r"$v_{z}$",
         "va": r"$v_{z}$",
@@ -3731,87 +3776,116 @@ def plot_cr_velocity_z(simgroup, gr, both=True, kpc=True, savefig=True):
         "vcr": r"$v_{{\rm c},z}$",
     }
 
-    for m, s in sims.items():
-        s = sims[m]
-        if s.options["cosmic_ray"]:
-            # zp = s.zprof.sel(time=s.tslice)
-            # zpp = s.zp_pp.sel(time=s.tslice)
-            zp_ = s.zp_ph.sel(time=s.tslice).sum(dim=["phase"])
-            zp_ = zp_.assign_coords(time=zp_.time.astype(int))
-            zpp_ = s.zp_pp_ph.sel(time=s.tslice).sum(dim=["phase"])
-            zpp_ = zpp_.assign_coords(time=zpp_.time.astype(int))
-            cr_vel_u1, cr_vel_l1 = fold_avg_vel(
-                zp_[["rho", "0-Ec", "mom3", "0-Fc3", "area"]], both=both
-            )
-            cr_vel_u2, cr_vel_l2 = fold_avg_vel(
-                zpp_[
-                    [
-                        "0-Fc3_adv",
-                        "0-Fc3_stream",
-                        "0-Fc3_diff",
-                        "0-Fc3_diff_mag",
-                        "area",
-                    ]
-                ],
-                both=both,
-            )
-            if both:
-                cr_vel = cr_vel_u1[["rho", "0-Ec"]] + cr_vel_l1[["rho", "0-Ec"]]
-                cr_vel.update(
-                    cr_vel_u1[["mom3", "0-Fc3"]] - cr_vel_l1[["mom3", "0-Fc3"]]
-                )
-                cr_vel.update(
-                    cr_vel_u2[["0-Fc3_adv", "0-Fc3_stream", "0-Fc3_diff"]]
-                    - cr_vel_l2[["0-Fc3_adv", "0-Fc3_stream", "0-Fc3_diff"]]
-                )
-                cr_vel.update(
-                    cr_vel_u2[["0-Fc3_diff_mag"]] + cr_vel_l2[["0-Fc3_diff_mag"]]
-                )
-            else:
-                cr_vel = cr_vel_u1
-                cr_vel.update(cr_vel_u2)
+    zp_ = s.zp_ph.sel(time=s.tslice).sum(dim=["phase"])
+    zp_ = zp_.assign_coords(time=zp_.time.astype(int))
+    zpp_ = s.zp_pp_ph.sel(time=s.tslice).sum(dim=["phase"])
+    zpp_ = zpp_.assign_coords(time=zpp_.time.astype(int))
+    cr_vel_u1, cr_vel_l1 = fold_avg_vel(
+        zp_[["rho", "0-Ec", "mom3", "0-Fc3", "area"]], both=both
+    )
+    cr_vel_u2, cr_vel_l2 = fold_avg_vel(
+        zpp_[
+            [
+                "0-Fc3_adv",
+                "0-Fc3_stream",
+                "0-Fc3_diff",
+                "0-Fc3_diff_mag",
+                "area",
+            ]
+        ],
+        both=both,
+    )
+    if both:
+        cr_vel = cr_vel_u1[["rho", "0-Ec"]] + cr_vel_l1[["rho", "0-Ec"]]
+        cr_vel.update(cr_vel_u1[["mom3", "0-Fc3"]] - cr_vel_l1[["mom3", "0-Fc3"]])
+        cr_vel.update(
+            cr_vel_u2[["0-Fc3_adv", "0-Fc3_stream", "0-Fc3_diff"]]
+            - cr_vel_l2[["0-Fc3_adv", "0-Fc3_stream", "0-Fc3_diff"]]
+        )
+        cr_vel.update(cr_vel_u2[["0-Fc3_diff_mag"]] + cr_vel_l2[["0-Fc3_diff_mag"]])
+    else:
+        cr_vel = cr_vel_u1
+        cr_vel.update(cr_vel_u2)
 
-            vmax = s.par["cr"]["vmax"] / s.u.velocity.cgs.value
-            Pcr = cr_vel["0-Ec"] / 3.0
-            cr_vel["vz"] = cr_vel["mom3"] / cr_vel["rho"]
-            cr_vel["va"] = cr_vel["0-Fc3_adv"] / (4 * Pcr)
-            cr_vel["vs"] = cr_vel["0-Fc3_stream"] / (4 * Pcr)
-            cr_vel["vd"] = cr_vel["0-Fc3_diff"] / (4 * Pcr)
-            cr_vel["vd_mag"] = cr_vel["0-Fc3_diff_mag"] / (4 * Pcr)
-            cr_vel["vcr"] = vmax * cr_vel["0-Fc3"] / (4 * Pcr)
-            # vels = get_cr_velocities(s, zp, zpp)
-            # vel = vels["all_w"]
-            for vf, c in zip(["va", "vs", "vd_mag", "vcr"], ["C0", "C1", "C2", "C3"]):
-                plot_zprof_quantile(cr_vel[vf], color=c, label=labels[vf])
-            plot_zprof_quantile(
-                cr_vel["va"] + cr_vel["vs"],
-                color="C4",
-                label=labels["va"] + r"$+$" + labels["vs"],  # ls="--",
-                quantile=False,
-            )
-        plt.xlim(0, 4)
-        plt.ylim(-20, 70)
+    vmax = s.par["cr"]["vmax"] / s.u.velocity.cgs.value
+    Pcr = cr_vel["0-Ec"] / 3.0
+    cr_vel["vz"] = cr_vel["mom3"] / cr_vel["rho"]
+    cr_vel["va"] = cr_vel["0-Fc3_adv"] / (4 * Pcr)
+    cr_vel["vs"] = cr_vel["0-Fc3_stream"] / (4 * Pcr)
+    cr_vel["vd"] = cr_vel["0-Fc3_diff"] / (4 * Pcr)
+    cr_vel["vd_mag"] = cr_vel["0-Fc3_diff_mag"] / (4 * Pcr)
+    cr_vel["vcr"] = vmax * cr_vel["0-Fc3"] / (4 * Pcr)
+
+    for vf, c in zip(["va", "vs", "vd_mag", "vcr"], ["C0", "C1", "C2", "C3"]):
+        plot_zprof_quantile(cr_vel[vf], color=c, ls=ls, label=labels[vf])
+
+    plot_zprof_quantile(
+        cr_vel["va"] + cr_vel["vs"],
+        color="C4",
+        label=labels["va"] + r"$+$" + labels["vs"],
+        ls=ls,
+        quantile=False,
+    )
+
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
 
-    plt.sca(axs[0])
-    plt.ylabel(r"$\overline{v}_z^{\tt wc}\,[{\rm km/s}]$")
-    labelLines(
-        plt.gca().get_lines(),
-        zorder=2.5,
-        xvals=(3.8, 3.5, 3.0, 1.5),
-        ha="right",
-        fontsize="small",
-        align=False,
-        outline_width=2,
-    )
+    plt.ylabel(r"CR velocity $[{\rm km/s}]$")
+
     if both:
         plt.xlabel(r"$|z|$" + zunit_label)
     else:
         plt.xlabel(r"$z$" + zunit_label)
-    plt.annotate("(a)", (0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
 
+    return
+
+
+def plot_vz(s, m, both=True):
+    c = model_color[m]
+    zpsel = s.zp_ph.sel(time=s.tslice)
+    vnet_u, vnet_l = fold_avg_vel(zpsel[["vel3", "area"]], both=both)
+    vout_u, vout_l = fold_avg_vel(zpsel[["vel3", "area"]], vz_dir=1, both=both)
+    if both:
+        vnet = vnet_u - vnet_l
+        vout = vout_u - vout_l
+    else:
+        vnet = vnet_u
+        vout = vout_u
+    ph = "wc"
+    plot_zprof_quantile(
+        vout["vel3"].sel(phase=ph), color=c, label=f"{model_name[m]}, out"
+    )
+    plot_zprof_quantile(
+        vnet["vel3"].sel(phase=ph),
+        color=c,
+        label=f"{model_name[m]}, net",
+        ls=":",
+        quantile=False,
+    )
+
+
+def plot_cr_velocity_z(simgroup, gr, both=True, kpc=True, savefig=True):
+    fig, axs = plt.subplots(1, 2, figsize=(8, 3.5), constrained_layout=True)
+    sims = simgroup[gr]
+
+    # vertical velocity
+    plt.sca(axs[0])
+    for m, s in sims.items():
+        plot_vz(s, m, both=both)
+        plt.annotate("(a)", (0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
+
+        plt.xlim(0, 4)
+        plt.ylim(-20, 70)
+
+    # cr velocities
     plt.sca(axs[1])
-    plt.ylabel(r"CR velocity $[{\rm km/s}]$")
+
+    for m, s in sims.items():
+        if s.options["cosmic_ray"]:
+            plot_cr_velocity_z_each(s, m, both=both, kpc=kpc)
+        plt.annotate("(b)", (0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
+        plt.xlim(0, 4)
+        plt.ylim(-20, 70)
+
     labelLines(
         plt.gca().get_lines(),
         zorder=2.5,
@@ -3820,12 +3894,6 @@ def plot_cr_velocity_z(simgroup, gr, both=True, kpc=True, savefig=True):
         fontsize="large",
         outline_width=3,
     )
-    plt.annotate("(b)", (0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
-
-    if both:
-        plt.xlabel(r"$|z|$" + zunit_label)
-    else:
-        plt.xlabel(r"$z$" + zunit_label)
     if savefig:
         plt.savefig(os.path.join(fig_outdir, f"{gr}_velocity_z_new.pdf"))
 
@@ -3851,7 +3919,7 @@ def plot_pressure_z_talk(simgroup, gr, ph="wc", kpc=True, savefig=True):
     sims = simgroup[gr]
     models = list(sims.keys())
     fig, axes = plt.subplots(
-        1, 2, figsize=(4, 2.5), sharey=True, constrained_layout=True
+        1, 2, figsize=(6, 2.5), sharey=True, constrained_layout=True
     )
     for i, m in enumerate(models):
         s = sims[m]
@@ -4181,7 +4249,7 @@ def plot_BC_zprof(simgroup, gr, savefig=True):
     plt.savefig(os.path.join(fig_outdir, "zprof_BC.pdf"), bbox_inches="tight")
 
 
-def plot_Pcr_lin(zp):
+def plot_Pcr_lin(zp, name="crmhd"):
     """Plot CR pressure profiles in linear scale to better show differences between models and phases."""
     plt.figure(figsize=(5, 4))
     plot_zprof_field(
@@ -4214,7 +4282,7 @@ def plot_Pcr_lin(zp):
     plt.axvline(-1, color="k", ls="--")
     plt.axvline(1, color="k", ls="--")
     plt.legend()
-    plt.savefig(os.path.join(fig_outdir, "Pcr_lin.pdf"), bbox_inches="tight")
+    plt.savefig(os.path.join(fig_outdir, f"{name}_Pcr_lin.pdf"), bbox_inches="tight")
 
 
 def plot_PMHD_lin(sims):
