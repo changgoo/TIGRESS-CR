@@ -292,6 +292,7 @@ def plot_slices_ncr(sim, num, savefig=True):
 
 def plot_projections(sim, num, savefig=True):
     prjdata = sim.get_prj(num, "y", prefix="prj.y")
+    prjdata_z = sim.get_prj(num, "z", prefix="prj.z")
     prjkwargs, labels = sim.set_prj_dfi()
     xz_ratio = sim.domain["Lx"][2] / sim.domain["Lx"][1]
     flist = ["Sigma", "mflux", "teflux", "keflux", "creflux"]
@@ -355,6 +356,7 @@ def plot_projections(sim, num, savefig=True):
 
 def plot_projections_ncr(sim, num, savefig=True):
     prjdata = sim.get_prj(num, "y", prefix="prj.y")
+    prjdata_z = sim.get_prj(num, "z", prefix="prj.z")
     prjkwargs, labels = sim.set_prj_dfi()
     xz_ratio = sim.domain["Lx"][2] / sim.domain["Lx"][1]
     flist = ["Sigma", "Sigma_HI", "Sigma_HII", "EM", "teflux", "keflux"]
@@ -431,6 +433,7 @@ def plot_snapshot(
     norm_factor=5.0,
     agemax=40.0,
     savefig=False,
+    force_override=False,
 ):
     """Plot 12-panel projection/slice plots in the z and y directions
 
@@ -451,13 +454,15 @@ def plot_snapshot(
     """
     # read slice/projection/star particle data
     slc_xy = sim.get_slice(
-        num, "allslc.z", outid=outid, slc_kwargs=dict(z=0, method="nearest")
+        num, "allslc.z", outid=outid, slc_kwargs=dict(z=0, method="nearest"),
+        force_override=force_override
     )
     slc_xz = sim.get_slice(
-        num, "allslc.y", outid=outid, slc_kwargs=dict(y=0, method="nearest")
+        num, "allslc.y", outid=outid, slc_kwargs=dict(y=0, method="nearest"),
+        force_override=force_override
     )
-    prj_xy = sim.get_prj(num, "z", prefix="prj.z", outid=outid)
-    prj_xz = sim.get_prj(num, "y", prefix="prj.y", outid=outid)
+    prj_xy = sim.get_prj(num, "z", prefix="prj.z", outid=outid, force_override=force_override)
+    prj_xz = sim.get_prj(num, "y", prefix="prj.y", outid=outid, force_override=force_override)
     if parnum is None:
         parnum = num
     sp = sim.load_parbin(parnum)
@@ -1045,7 +1050,11 @@ if __name__ == "__main__":
             gc.collect()
             parnum = int(num // (pardt / mydt))
             if v == spp._hdf5_outvar_def:
-                f = plot_snapshot(spp, num, parnum=parnum, savefig=True)
+                try:
+                    f = plot_snapshot(spp, num, parnum=parnum, savefig=True)
+                except KeyError:
+                    print(f"Recalculating slice/projection for num={num}")
+                    f = plot_snapshot(spp, num, parnum=parnum, savefig=True, force_override=True)
                 nPpdf = spp.get_nPpdf(num)
                 nTpdf = spp.get_nTpdf(num)
                 pdf = spp.get_windpdf(num, "windpdf")
