@@ -62,6 +62,53 @@ class SliceProj:
         slc.attrs = dict(time=ds.attrs["Time"])
         return slc
 
+    @LoadSim.Decorators.check_netcdf
+    def get_crslice(
+        self,
+        num,
+        prefix,
+        savdir=None,
+        force_override=False,
+        filebase=None,
+        outid=None,
+        slc_kwargs=dict(z=0, method="nearest"),
+        dryrun=False,
+    ):
+        """
+        a warpper function to make data reading easier
+        """
+        ds = self.load_hdf5(num=num, outid=outid, file_only=True)
+
+        if dryrun:
+            return osp.getmtime(self.fhdf5)
+            # return max(osp.getmtime(self.fhdf5),osp.getmtime(__file__))
+
+        ds = self.get_data(num, outid=outid, load_derived=False)
+        # get_derived_fields
+
+        cr_slc = xr.Dataset()
+        Pc = ds["0-Ec"]/3.0
+        cr_slc["alpha"] = Pc/ds["press"]
+        cr_slc["gradPcr"] = self.GradPcr_parallel(ds)
+        cr_slc["lcr"] = Pc/cr_slc["gradPcr"]
+        cs = np.sqrt(ds["press"] / ds["rho"])
+
+        if "0-Vs1" in ds:
+            Vs1 = ds["0-Vs1"]
+            Vs2 = ds["0-Vs2"]
+            Vs3 = ds["0-Vs3"]
+            Vs = np.sqrt(Vs1**2 + Vs2**2 + Vs3**2)
+            cr_slc["beta_s"] = cs**2/Vs**2/2.
+        if "Bcc1" in ds:
+            vA1 = ds["Bcc1"] / np.sqrt(ds["rho"])
+            vA2 = ds["Bcc2"] / np.sqrt(ds["rho"])
+            vA3 = ds["Bcc3"] / np.sqrt(ds["rho"])
+            vA = np.sqrt(vA1**2 + vA2**2 + vA3**2)
+            cr_slc["beta"] = cs**2/vA**2/2.
+        slc = cr_slc.sel(**slc_kwargs)
+        slc.attrs = dict(time=ds.attrs["Time"])
+        return slc
+
     def set_prj_dfi(self):
         prjkwargs = dict()
         prjkwargs["Sigma"] = dict(norm=LogNorm(1.0e-2, 1.0e2), cmap=cm.pink_r)

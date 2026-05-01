@@ -14,13 +14,18 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from mpl_toolkits.axes_grid1 import ImageGrid
 from mpi4py import MPI
 
+import astropy.units as au
+from matplotlib.colors import Normalize, LogNorm
 
 def plot_slice_xy(
     sim, slc, field, dfi, kpc=False, vec=None, st=None, stream_kwargs=dict(color="k")
 ):
     try:
         dfi_ = dfi[field]
-        data = dfi_["func"](slc, sim.u)
+        if "func" in dfi_:
+            data = dfi_["func"](slc, sim.u)
+        else:
+            data = slc[field]
     except KeyError:
         return
     # if field == "Fcr3":
@@ -51,7 +56,10 @@ def plot_slice_xz(
 ):
     try:
         dfi_ = dfi[field]
-        data = dfi_["func"](slc, sim.u)
+        if "func" in dfi_:
+            data = dfi_["func"](slc, sim.u)
+        else:
+            data = slc[field]
     except KeyError:
         return
     # if field == "Fcr3":
@@ -80,6 +88,80 @@ def plot_slice_xz(
 
     return im
 
+def plot_acoustic(sim, num, savefig=True):
+    # load slices
+    slc = sim.get_slice(num,"allslc.y", slc_kwargs=dict(y=0, method="nearest"))
+    crslc = sim.get_crslice(num,"crslc.y", slc_kwargs=dict(y=0, method="nearest"))
+
+    # adiabatic index
+    gmc= 4/3.
+    gam= 5/3.
+    gm1= gam-1
+
+    # derived quantities
+    sigma_para = sim.dfi["sigma_para"]["func"](slc,sim.u)
+    Pcr = sim.dfi["pok_cr"]["func"](slc,sim.u)
+    gradPcr = crslc["gradPcr"]
+    lcr = np.abs(crslc["lcr"])
+    vA = sim.dfi["vAmag"]["func"](slc,sim.u)
+    vAi = sim.dfi["VAi_mag"]["func"](slc,sim.u)
+    cs = sim.dfi["cs"]["func"](slc,sim.u)
+    ldiff = 1/(sigma_para*np.sqrt(gam)*cs*1.e5*sim.u.cm)
+    eta = ldiff/lcr
+    beta = 2.0*crslc["beta"]
+    betai = 2.0*crslc["beta_s"]
+    alpha = crslc["alpha"]
+
+    # acoustic instability growth time
+    grate0 = 0.5*gmc*alpha*(cs*1.e5)**2*sigma_para
+    gratei1 = -((1+gm1/np.sqrt(gam*betai))*(1-0.5/np.sqrt(gam*betai))+eta/gmc*(1+gm1/np.sqrt(gam*betai)))
+    gratei2 = -((1-gm1/np.sqrt(gam*betai))*(1+0.5/np.sqrt(gam*betai))-eta/gmc*(1-gm1/np.sqrt(gam*betai)))
+    grate1 = -((1+gm1/np.sqrt(gam*betai))*(1-0.5/np.sqrt(gam*beta))+eta/gmc*(1+gm1/np.sqrt(gam*beta)))
+    grate2 = -((1-gm1/np.sqrt(gam*betai))*(1+0.5/np.sqrt(gam*beta))-eta/gmc*(1-gm1/np.sqrt(gam*beta)))
+    tgri_for = au.s.to("Myr")/(grate0*gratei1)
+    tgri_back = au.s.to("Myr")/(grate0*gratei2)
+    tgr_for = au.s.to("Myr")/(grate0*grate1)
+    tgr_back = au.s.to("Myr")/(grate0*grate2)
+
+    kwargs = [sim.dfi["sigma_para"]["imshow_args"],
+            dict(cmap=plt.cm.berlin,norm=Normalize(-0.02,0.02),cbar_kwargs=dict(label=r"$\nabla_\parallel P_c$")),
+            dict(cmap=plt.cm.cividis,norm=LogNorm(1.e2,1.e6),cbar_kwargs=dict(label=r"$l_{\rm c}\equiv P_c/|\nabla_\parallel  P_c|$")),
+            dict(cmap=plt.cm.cividis,norm=LogNorm(1.e2,1.e6),cbar_kwargs=dict(label=r"$l_{\rm diff}\equiv 1/|\sigma_\parallel c_s|$")),
+            dict(cmap=plt.cm.plasma,norm=Normalize(3.e3,9.e3),cbar_kwargs=dict(label=r"$ P_c/k_B$")),
+            dict(cmap=plt.cm.plasma,norm=LogNorm(1,1000),cbar_kwargs=dict(label=r"$\alpha\equiv P_c/P_g$")),
+            dict(cmap=plt.cm.bwr,norm=LogNorm(0.01,100),cbar_kwargs=dict(label=r"$\beta\equiv c_s^2/v_A^2$")),
+            dict(cmap=plt.cm.bwr,norm=LogNorm(0.01,100),cbar_kwargs=dict(label=r"$\beta_i\equiv c_s^2/v_{A,i}^2$")),
+            # dict(cmap=plt.cm.bwr,norm=LogNorm(0.01,100),cbar_kwargs=dict(label=r"$\eta\equiv l_{\rm diff}/l_{\rm c}$")),
+            dict(cmap=plt.cm.managua,norm=LogNorm(0.1,1000),cbar_kwargs=dict(label=r"$t_{\rm gr,f}(v_A)\,[{\rm Myr}]$")),
+            dict(cmap=plt.cm.managua,norm=LogNorm(0.1,1000),cbar_kwargs=dict(label=r"$t_{\rm gr,f}(v_{A,i})\,[{\rm Myr}]$")),
+            dict(cmap=plt.cm.managua,norm=LogNorm(0.1,1000),cbar_kwargs=dict(label=r"$t_{\rm gr,b}(v_A)\,[{\rm Myr}]$")),
+            dict(cmap=plt.cm.managua,norm=LogNorm(0.1,1000),cbar_kwargs=dict(label=r"$t_{\rm gr,b}(v_{A,i})\,[{\rm Myr}]$"))
+            ]
+    data = [sigma_para, gradPcr, lcr, ldiff,
+            Pcr, alpha, beta, betai, #eta,
+            tgr_for, tgri_for, tgr_back, tgri_back]
+    for zslice in [slice(-3000,-1000), slice(-1000,1000), slice(1000,3000)]:
+        fig,axes = plt.subplots(3,4,figsize=(12,10))
+        for ax, d, kw in zip(axes.flat,data,kwargs):
+            d_=d.sel(z=zslice)
+            plt.sca(ax)
+            d_.plot(**kw)
+            ax.set_aspect("equal")
+            ax.axis("off")
+            ax.set_title("")
+        axes.flat[0].annotate(f"t={slc.attrs['time']*sim.u.Myr:.2f} Myr,"
+                              f" z={zslice.start//1.e3} to {zslice.stop//1.e3} kpc",
+                              (0.1,1.01), ha="left", va="bottom",
+                              xycoords="axes fraction", annotation_clip=False)
+        if savefig:
+            savdir = osp.join(sim.savdir, "cr_acoustic_plot")
+            if not osp.exists(savdir):
+                os.makedirs(savdir, exist_ok=True)
+            zstr = int(zslice.start//1.e3)
+            zend = int(zslice.stop//1.e3)
+            savname = f"acoustic_z{zstr}to{zend}_{num:04d}.png"
+            fig.savefig(osp.join(savdir, savname), dpi=200, bbox_inches="tight")
+            plt.close(fig)
 
 def plot_slices(sim, num, savefig=True):
     slc_xy = sim.get_slice(num, "allslc.z", slc_kwargs=dict(z=0, method="nearest"))
@@ -1010,6 +1092,7 @@ if __name__ == "__main__":
             if spp.options["cosmic_ray"]:
                 f = plot_slices(spp, num)
                 plt.close(f)
+                plot_acoustic(spp, num)
                 flist = [
                     "nH",
                     "T",
