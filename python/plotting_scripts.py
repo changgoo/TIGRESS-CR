@@ -2482,27 +2482,17 @@ def plot_gainloss_z(
     plt.ylabel("Loss/Gain for Gas\n" + r"$[{\rm erg\,s^{-1}\,cm^{-3}}]$")
     plt.yscale("log")
     plt.ylim(1.0e-30, 1.0e-25)
-    lines, labels = axes[0, 0].get_legend_handles_labels()
-    custom_lines = [lines[0], lines[inext]]
-    custom_labels = names
-    plt.legend(
-        custom_lines,
-        custom_labels,
-        fontsize="x-small",
-        title="model",
-        title_fontsize="x-small",
-        frameon=False,
-        loc=1,
-    )
 
-    plt.sca(axes[0, 1])
-    lines, labels = axes[0, 1].get_legend_handles_labels()
+    ax = axes[0,0]
+    lines, labels = ax.get_legend_handles_labels()
+
+    # loss
     custom_lines = [lines[nmhd + 1], lines[nmhd + 4]]
     custom_labels = [labels[nmhd + 1], labels[nmhd + 4]]
     if grav_work:
         custom_lines.append(lines[nmhd + 5])
         custom_labels.append(labels[nmhd + 5])
-    plt.legend(
+    leg2 = ax.legend(
         custom_lines,
         custom_labels,
         fontsize="x-small",
@@ -2512,32 +2502,48 @@ def plot_gainloss_z(
         loc=1,
     )
 
-    if len(axes[0, :]) == 3:
-        plt.sca(axes[0, 2])
-        lines, labels = axes[0, 2].get_legend_handles_labels()
-        custom_lines = [lines[nmhd + 2], lines[nmhd + 3]]
-        custom_labels = [labels[nmhd + 2], labels[nmhd + 3]]
-        plt.legend(
-            custom_lines,
-            custom_labels,
-            fontsize="x-small",
-            title="gas gain",
-            title_fontsize="x-small",
-            frameon=False,
-            loc=1,
-        )
-        # plt.legend(fontsize="x-small")
+    # gain
+    custom_lines = [lines[nmhd + 2], lines[nmhd + 3]]
+    custom_labels = [labels[nmhd + 2], labels[nmhd + 3]]
+    leg3 = ax.legend(
+        custom_lines,
+        custom_labels,
+        fontsize="x-small",
+        title="gas gain",
+        title_fontsize="x-small",
+        frameon=False,
+        loc=2,
+    )
+    ax.add_artist(leg2)
+
+    # model
+    ax = axes[0, 1]
+    lines, labels = ax.get_legend_handles_labels()
+
+    custom_lines = [lines[0], lines[inext]]
+    custom_labels = names
+    leg1 = ax.legend(
+        custom_lines,
+        custom_labels,
+        fontsize="x-small",
+        title="model",
+        title_fontsize="x-small",
+        frameon=False,
+        loc=1,
+    )
+    # ax.add_artist(leg1)
 
     plt.sca(axes[1, 0])
     plt.ylabel("Loss/Gain for CRs\n" + r"$[{\rm erg\,s^{-1}\,cm^{-3}}]$")
     plt.yscale("log")
     plt.ylim(1.0e-30, 1.0e-25)
 
-    plt.sca(axes[1, 1])
-    lines, labels = axes[1, 1].get_legend_handles_labels()
+    # plt.sca(axes[1, 1])
+    ax = axes[1, 0]
+    lines, labels = ax.get_legend_handles_labels()
     custom_lines = [lines[0], lines[2]]
     custom_labels = [labels[0], labels[2]]
-    plt.legend(
+    cr_leg1 = ax.legend(
         custom_lines,
         custom_labels,
         fontsize="x-small",
@@ -2547,20 +2553,18 @@ def plot_gainloss_z(
         frameon=False,
     )
 
-    if len(axes[1, :]) == 3:
-        plt.sca(axes[1, 2])
-        lines, labels = axes[1, 2].get_legend_handles_labels()
-        custom_lines = [lines[1], lines[3]]
-        custom_labels = [labels[1], labels[3]]
-        plt.legend(
-            custom_lines,
-            custom_labels,
-            fontsize="x-small",
-            title="CR gain",
-            title_fontsize="x-small",
-            frameon=False,
-            loc=1,
-        )
+    custom_lines = [lines[1], lines[3]]
+    custom_labels = [labels[1], labels[3]]
+    cr_leg2 = ax.legend(
+        custom_lines,
+        custom_labels,
+        fontsize="x-small",
+        title="CR gain",
+        title_fontsize="x-small",
+        frameon=False,
+        loc=2,
+    )
+    ax.add_artist(cr_leg1)
 
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
     plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label, xlim=(-4, 4))
