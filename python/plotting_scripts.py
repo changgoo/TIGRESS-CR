@@ -30,9 +30,10 @@ plt.style.use(osp.join(filepath, "paper.mplstyle"))
 fig_outdir = None
 model_name = None
 model_color = None
+zlim = 4
 
 
-def setup(outdir, names, colors):
+def setup(outdir, names, colors, zlim_=4):
     """Setup output directory and plotting styles.
 
     Creates output directory if it does not exist and
@@ -49,10 +50,11 @@ def setup(outdir, names, colors):
     """
     if not osp.exists(outdir):
         os.makedirs(outdir)
-    global fig_outdir, model_name, model_color
+    global fig_outdir, model_name, model_color, zlim
     fig_outdir = outdir
     model_name = names
     model_color = colors
+    zlim = zlim_
 
 
 def plot_injection(s, tmin=150, tmax=500, kpc=True, cr=True, **kwargs):
@@ -718,7 +720,7 @@ def plot_pressure_z(simgroup, gr, ph="wc", kpc=True, savefig=True):
     plt.setp(axes, "yscale", "log")
     plt.setp(axes, "xlabel", r"$z\,[{\rm kpc}]$")
     plt.setp(axes, "ylim", (10, 1.0e5))
-    plt.setp(axes, "xlim", (-4, 4))
+    plt.setp(axes, "xlim", (-zlim, zlim))
     for ax in axes:
         plt.sca(ax)
         plt.axvline(1, ls="--", color="k", lw=1)
@@ -847,7 +849,7 @@ def plot_profile_frac_z(
     plt.sca(axes[0])
     plt.legend()
     # plt.ylim(0, 1)
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
     plt.yscale("log")
     plt.ylabel(r"$\langle q \rangle$")
     plt.setp(axes, "xlabel", r"$z\,[{\rm kpc}]$")
@@ -901,7 +903,7 @@ def plot_profile_z(simgroup, gr, field="rho", kpc=True, savefig=True):
     plt.sca(axes[0])
     plt.legend()
     # plt.ylim(0, 1)
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
     plt.yscale("log")
     plt.ylabel(r"$\overline{q}$")
     plt.setp(axes, "xlabel", r"$z\,[{\rm kpc}]$")
@@ -998,7 +1000,7 @@ def plot_fraction_ph_z(simgroup, gr, field="rho", kpc=True, savefig=True):
 
             plt.title(ph)
             plt.xlabel(r"$z\,[{\rm kpc}]$")
-            plt.xlim(-4, 4)
+            plt.xlim(-zlim, zlim)
     plt.sca(axes[0])
     plt.legend()
     plt.ylim(0, 1)
@@ -1050,7 +1052,7 @@ def plot_rho_z(simgroup, gr, kpc=True, savefig=True):
             # plt.title(f"ph={ph}")
     plt.sca(axes[0, 0])
     plt.ylabel(r"$\langle n_H \rangle\,[{\rm cm^{-3}}]$")
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
     plt.ylim(bottom=1.0e-5)
     plt.sca(axes[1, 0])
     plt.ylabel(r"$\langle \mathcal{E}_{\rm tot} \rangle\,[{\rm erg\,cm^{-3}}]$")
@@ -1226,22 +1228,22 @@ def plot_cr_velocity_sigma_z(simgroup, gr, kpc=True, savefig=True):
     plt.ylabel(r"$\tilde{\Gamma}_{\rm c}[{\rm erg\,s^{-1}\,cm^{-3}}]$")
     plt.xlabel(r"$z\,[{\rm kpc}]$")
     # plt.ylim(0, 7.0e-28)
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
     plt.sca(axes[3, 1])
     plt.ylabel(r"$\tilde{\Gamma}_{\rm c}[{\rm erg\,s^{-1}\,cm^{-3}}]$")
     plt.xlabel(r"$z\,[{\rm kpc}]$")
     # plt.ylim(0, 7.0e-28)
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
     plt.sca(axes[4, 0])
     plt.ylabel(r"$\tilde{PdV}_{\rm c}[{\rm erg\,s^{-1}\,cm^{-3}}]$")
     plt.xlabel(r"$z\,[{\rm kpc}]$")
     # plt.ylim(0, 7.0e-28)
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
     plt.sca(axes[4, 1])
     plt.ylabel(r"$\tilde{PdV}_{\rm c}[{\rm erg\,s^{-1}\,cm^{-3}}]$")
     plt.xlabel(r"$z\,[{\rm kpc}]$")
     # plt.ylim(0, 7.0e-28)
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
 
     if savefig:
         plt.savefig(osp.join(fig_outdir, f"{gr}_cr_velocity_sigma.pdf"))
@@ -1359,7 +1361,7 @@ def plot_flux_z(simgroup, gr, both=True, vz_dir=None, kpc=True, savefig=True):
             #     )
             plt.yscale("log")
             plt.ylim(1.0e43, 1.0e47)
-            plt.xlim(0, 4)
+            plt.xlim(0, zlim)
     axs = axes[:, 0]
     plt.sca(axs[0])
     if vz_dir is not None:
@@ -1528,7 +1530,7 @@ def plot_loading_z(simgroup, gr, vz_dir=None, both=True, kpc=True, savefig=True)
                 )
             plt.yscale("log")
             plt.ylim(1.0e-3, 5.0)
-            plt.xlim(0, 4)
+            plt.xlim(0, zlim)
             # print loading factor values at z=0.5, 1, 2, 3 kpc for each simulation and phase
             z_vals = [0.5, 1, 2, 3, 4]
             mflux_val = np.interp(
@@ -1734,7 +1736,7 @@ def plot_loading_z_merged(simgroup, gr, vz_dir=None, both=True, kpc=True, savefi
             )
         plt.yscale("log")
         plt.ylim(1.0e-3, 5.0)
-        plt.xlim(0, 4)
+        plt.xlim(0, zlim)
         # print loading factor values at z=0.5, 1, 2, 3 kpc for each simulation and phase
         z_vals = [0.5, 1, 2, 3, 4]
         mflux_val = np.interp(
@@ -1868,7 +1870,7 @@ def plot_area_mass_fraction_z(simgroup, gr, kpc=True, savefig=True):
 
     plt.sca(axes[0, 0])
     plt.ylim(0, 1)
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
     plt.ylabel(r"$f_A, f_A^{\rm out}$")
     lines, labels = axes[0, 0].get_legend_handles_labels()
     custom_lines = [lines[4], lines[5]]
@@ -2106,7 +2108,7 @@ def plot_velocity_z(simgroup, gr, ph="wc", upper=True, kpc=True, savefig=True):
     plt.ylabel(r"$\overline{v}_{{\rm eff},z}\,[{\rm km/s}]$")
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
     plt.xlabel(r"$z$" + zunit_label)
-    plt.xlim(0, 4)
+    plt.xlim(0, zlim)
     if savefig:
         plt.savefig(osp.join(fig_outdir, f"{gr}_velocity_z_{ph}.pdf"))
     return fig
@@ -2203,7 +2205,7 @@ def plot_kappa_z(simgroup, gr, phases=["wc", "hot"], kpc=True, savefig=True):
     plt.ylim(1.0e-30, 1.0e-27)
 
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
-    plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label, xlim=(-4, 4))
+    plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label, xlim=(-zlim, zlim))
 
     if savefig:
         plt.savefig(osp.join(fig_outdir, f"{gr}_kappa_z_{nph}ph.pdf"))
@@ -2339,7 +2341,7 @@ def plot_gainloss_z_each(
     plt.sca(axes[1, 1])
 
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
-    plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label, xlim=(-4, 4))
+    plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label, xlim=(-zlim, zlim))
 
     if savefig:
         plt.savefig(osp.join(fig_outdir, f"{name}_heatcool_z_{nph}ph.pdf"))
@@ -2567,7 +2569,7 @@ def plot_gainloss_z(
     ax.add_artist(cr_leg1)
 
     zunit_label = r"$\,[{\rm kpc}]$" if kpc else r"$\,[{\rm pc}]$"
-    plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label, xlim=(-4, 4))
+    plt.setp(axes[1, :], xlabel=r"$z$" + zunit_label, xlim=(-zlim, zlim))
 
     if savefig:
         plt.savefig(osp.join(fig_outdir, f"{gr}_heatcool_z_{nph}ph.pdf"))
@@ -2839,7 +2841,7 @@ def plot_momentum_transfer_z(
     zfactor = 1.0e-3 if kpc else 1.0
     plt.sca(axes[0, 0])
     plt.title("lower")
-    plt.xlim(-4, -zmin * zfactor)
+    plt.xlim(-zlim, -zmin * zfactor)
     # if zmin<zref:
     #     plt.ylim(-5,5)
     # else:
@@ -2847,7 +2849,7 @@ def plot_momentum_transfer_z(
     plt.sca(axes[0, 1])
     plt.title("upper")
     plt.legend(frameon=False, loc=4)
-    plt.xlim(zmin * zfactor, 4)
+    plt.xlim(zmin * zfactor, zlim)
     plt.sca(axes[1, 1])
     plt.legend(frameon=False, loc=4, ncol=2)
     plt.setp(
@@ -3571,7 +3573,7 @@ def plot_crgain_cumsum(s, m, savefig=True):
     )
     plt.ylabel(r"$F(|z|)/F_{\rm E,SN}$")
     plt.xlabel(r"$|z|\,[{\rm kpc}]$")
-    plt.xlim(0, 4)
+    plt.xlim(0, zlim)
 
     if savefig:
         plt.savefig(os.path.join(fig_outdir, f"{name}_Edot_cumsum_norm.pdf"))
@@ -3743,7 +3745,7 @@ def plot_cr_velocity_z_all(simgroup, group, both=True, kpc=True, savefig=True):
             plt.sca(ax)
             plot_zprof_quantile(cr_vel[vf], color=c, label=name)
             plt.ylabel(labels[vf] + r"$\,[{\rm km/s}]$")
-            plt.xlim(0, 4)
+            plt.xlim(0, zlim)
 
         plot_zprof_quantile(
             cr_vel["va"] + cr_vel["vs"],
@@ -3782,42 +3784,59 @@ def plot_cr_velocity_z_each(s, m, both=True, kpc=True, ls="-"):
 
     zp_ = s.zp_ph.sel(time=s.tslice).sum(dim=["phase"])
     zp_ = zp_.assign_coords(time=zp_.time.astype(int))
-    zpp_ = s.zp_pp_ph.sel(time=s.tslice).sum(dim=["phase"])
-    zpp_ = zpp_.assign_coords(time=zpp_.time.astype(int))
+    varlist = ["rho", "0-Ec", "mom3", "0-Fc3", "area"]
+    if "0-Fc_adv3" in zp_:
+        varlist += ["0-Fc_adv3", "0-Fc_st3", "0-Fc_diff3"]
     cr_vel_u1, cr_vel_l1 = fold_avg_vel(
-        zp_[["rho", "0-Ec", "mom3", "0-Fc3", "area"]], both=both
+        zp_[varlist], both=both
     )
-    cr_vel_u2, cr_vel_l2 = fold_avg_vel(
-        zpp_[
-            [
-                "0-Fc3_adv",
-                "0-Fc3_stream",
-                "0-Fc3_diff",
-                "0-Fc3_diff_mag",
-                "area",
-            ]
-        ],
-        both=both,
-    )
+
+    if "0-Fc_adv3" not in zp_:
+        zpp_ = s.zp_pp_ph.sel(time=s.tslice).sum(dim=["phase"])
+        zpp_ = zpp_.assign_coords(time=zpp_.time.astype(int))
+        cr_vel_u2, cr_vel_l2 = fold_avg_vel(
+            zpp_[
+                [
+                    "0-Fc3_adv",
+                    "0-Fc3_stream",
+                    "0-Fc3_diff_mag",
+                    "area",
+                ]
+            ],
+            both=both,
+        )
     if both:
         cr_vel = cr_vel_u1[["rho", "0-Ec"]] + cr_vel_l1[["rho", "0-Ec"]]
         cr_vel.update(cr_vel_u1[["mom3", "0-Fc3"]] - cr_vel_l1[["mom3", "0-Fc3"]])
-        cr_vel.update(
-            cr_vel_u2[["0-Fc3_adv", "0-Fc3_stream", "0-Fc3_diff"]]
-            - cr_vel_l2[["0-Fc3_adv", "0-Fc3_stream", "0-Fc3_diff"]]
-        )
-        cr_vel.update(cr_vel_u2[["0-Fc3_diff_mag"]] + cr_vel_l2[["0-Fc3_diff_mag"]])
+        if "0-Fc_adv3" not in zp_:
+            cr_vel.update(
+                cr_vel_u2[["0-Fc3_adv", "0-Fc3_stream"]]
+                - cr_vel_l2[["0-Fc3_adv", "0-Fc3_stream"]]
+            )
+            cr_vel.update(cr_vel_u2[["0-Fc3_diff_mag"]] + cr_vel_l2[["0-Fc3_diff_mag"]])
+        else:
+            cr_vel.update(
+                cr_vel_u1[["0-Fc_adv3", "0-Fc_st3"]]
+                - cr_vel_l1[["0-Fc_adv3", "0-Fc_st3"]]
+            )
+            cr_vel.update(cr_vel_u1[["0-Fc_diff3"]] + cr_vel_l1[["0-Fc_diff3"]])
     else:
         cr_vel = cr_vel_u1
-        cr_vel.update(cr_vel_u2)
+        if "0-Fc_adv3" not in zp_:
+            cr_vel.update(cr_vel_u2)
 
     vmax = s.par["cr"]["vmax"] / s.u.velocity.cgs.value
     Pcr = cr_vel["0-Ec"] / 3.0
     cr_vel["vz"] = cr_vel["mom3"] / cr_vel["rho"]
-    cr_vel["va"] = cr_vel["0-Fc3_adv"] / (4 * Pcr)
-    cr_vel["vs"] = cr_vel["0-Fc3_stream"] / (4 * Pcr)
-    cr_vel["vd"] = cr_vel["0-Fc3_diff"] / (4 * Pcr)
-    cr_vel["vd_mag"] = cr_vel["0-Fc3_diff_mag"] / (4 * Pcr)
+    if "0-Fc_adv3" not in zp_:
+        cr_vel["va"] = cr_vel["0-Fc3_adv"] / (4 * Pcr)
+        cr_vel["vs"] = cr_vel["0-Fc3_stream"] / (4 * Pcr)
+        # cr_vel["vd"] = cr_vel["0-Fc3_diff"] / (4 * Pcr)
+        cr_vel["vd_mag"] = cr_vel["0-Fc3_diff_mag"] / (4 * Pcr)
+    else:
+        cr_vel["va"] = cr_vel["0-Fc_adv3"] / (4 * Pcr)
+        cr_vel["vs"] = cr_vel["0-Fc_st3"] / (4 * Pcr)
+        cr_vel["vd_mag"] = cr_vel["0-Fc_diff3"] / (4 * Pcr)
     cr_vel["vcr"] = vmax * cr_vel["0-Fc3"] / (4 * Pcr)
 
     for vf, c in zip(["va", "vs", "vd_mag", "vcr"], ["C0", "C1", "C2", "C3"]):
@@ -3877,17 +3896,18 @@ def plot_cr_velocity_z(simgroup, gr, both=True, kpc=True, savefig=True):
         plot_vz(s, m, both=both)
         plt.annotate("(a)", (0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
 
-        plt.xlim(0, 4)
+        plt.xlim(0, zlim)
         plt.ylim(-20, 70)
 
     # cr velocities
     plt.sca(axs[1])
 
-    for m, s in sims.items():
+    line_styles = ["-", "--", "-.", ":"]
+    for (m, s), ls in zip(sims.items(), line_styles):
         if s.options["cosmic_ray"]:
-            plot_cr_velocity_z_each(s, m, both=both, kpc=kpc)
+            plot_cr_velocity_z_each(s, m, both=both, kpc=kpc, ls=ls)
         plt.annotate("(b)", (0.05, 0.95), xycoords="axes fraction", ha="left", va="top")
-        plt.xlim(0, 4)
+        plt.xlim(0, zlim)
         plt.ylim(-20, 70)
 
     labelLines(
@@ -3957,7 +3977,7 @@ def plot_pressure_z_talk(simgroup, gr, ph="wc", kpc=True, savefig=True):
     plt.setp(axes, "yscale", "log")
     plt.setp(axes, "xlabel", r"$z\,[{\rm kpc}]$")
     plt.setp(axes, "ylim", (10, 1.0e5))
-    plt.setp(axes, "xlim", (-4, 4))
+    plt.setp(axes, "xlim", (-zlim, zlim))
     plt.setp(axes, "xticks", [-4, -2, 0, 2, 4])
     for ax in axes:
         plt.sca(ax)
@@ -4282,7 +4302,7 @@ def plot_Pcr_lin(zp, name="crmhd"):
     )
     plt.ylabel(r"$P/k_B\,[{\rm cm^{-3}\,K}]$")
     plt.xlabel(r"$z\,[{\rm kpc}]$")
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
     plt.axvline(-1, color="k", ls="--")
     plt.axvline(1, color="k", ls="--")
     plt.legend()
@@ -4337,7 +4357,7 @@ def plot_PMHD_lin(sims):
     plt.xlim(-1, 1)
     plt.ylabel(r"$P/k_B\,[{\rm cm^{-3}\,K}]$")
     plt.xlabel(r"$z\,[{\rm kpc}]$")
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
     plt.axvline(-1, color="k", ls="--")
     plt.axvline(1, color="k", ls="--")
     plt.legend()
@@ -4369,7 +4389,7 @@ def plot_xion(s, m):
     plot_zprof_quantile(xionw, color="k", label="whole")
     plt.ylabel(r"$\langle x_i\rangle^{\rm ph}/A^{\rm ph}$")
 
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
     plt.xlabel("z")
     plt.sca(axes[1])
     for ph in s.zprof.phase.data:
@@ -4379,7 +4399,7 @@ def plot_xion(s, m):
             plot_zprof_quantile(xion_m1.sel(phase=ph), color=colors[ph], label=ph)
     plot_zprof_quantile(xionwm1, color="k", label="whole")
     plt.ylabel(r"$\langle n_i\rangle^{\rm ph}/\langle n_H\rangle^{\rm ph}$")
-    plt.xlim(-4, 4)
+    plt.xlim(-zlim, zlim)
     plt.xlabel("z")
     plt.legend()
     plt.savefig(os.path.join(fig_outdir, "xion.pdf"), bbox_inches="tight")
