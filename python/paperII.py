@@ -54,6 +54,10 @@ def load(model_dict, gr, tslice=slice(200, 500), colors=None, verbose=True):
                 model.append(f"Vmax{int(par['cr']['vmax'] / 1.0e9)}")
         # if "rst" in base_split[-1]:
         #     model.append(base_split[-1])
+        if "fc" in base_split[-1]:
+            model.append(base_split[-1])
+        if "noperp" in base_split[-1]:
+            model.append(base_split[-1])
         newkey = "-".join(model)
 
         mlist.append(newkey)
@@ -72,7 +76,7 @@ def load(model_dict, gr, tslice=slice(200, 500), colors=None, verbose=True):
                 s.tslice_Myr = tslice
             s.tslice = slice(s.tslice_Myr.start / s.u.Myr, s.tslice_Myr.stop / s.u.Myr)
 
-            load_windpdf(s, both=True)
+            # load_windpdf(s, both=True)
             # zp_pp = s.load_zprof_postproc()
 
             if colors is None:
