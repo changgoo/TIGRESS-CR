@@ -7,7 +7,7 @@ import numpy as np
 import gc
 
 from load_sim_tigresspp import LoadSimTIGRESSPP
-from pyathena.plt_tools.make_movie import make_movie
+from movie_utils import make_movie
 from pyathena.plt_tools.plt_starpar import scatter_sp, legend_sp, colorbar_sp
 
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes

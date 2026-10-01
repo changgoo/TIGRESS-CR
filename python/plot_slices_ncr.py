@@ -18,16 +18,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import astropy.constants as ac
 import astropy.units as au
-from matplotlib.colors import LogNorm
+from matplotlib.colors import LogNorm, Normalize
 from mpi4py import MPI
-from pyathena.plt_tools.make_movie import make_movie
 from pyathena.plt_tools.plt_starpar import scatter_sp
 
 from load_sim_tigresspp import LoadSimTIGRESSPP
+from movie_utils import make_movie
 
 
 ERAD_PE_ISRF = 7.613e-14
 ERAD_LW_ISRF = 1.335e-14
+CR_ION_RATE_REFERENCE = 2e-16
 
 RADIATION_ALIASES = {
     # Tigris ray-tracing frequency bins: 18.0, 12.2, and 9.0 eV.
@@ -48,13 +49,12 @@ NCR_MHD_FIELDS = (
     "Bmag",
     "Zgas",
     "rret",
-    "Erad_PE",
-    "Erad_LW",
     "Erad_FUV",
     "Erad_LyC",
 )
 
 NCR_CR_FIELDS = ("sigma_para", "VAi_mag", "Vcr_mag", "pok_cr")
+CR_NCR_FIELDS = ("xi_cr",)
 
 NCR_PROJECTION_FIELDS = (
     "Sigma",
@@ -124,14 +124,65 @@ def _temperature_ncr(data, units):
     return pressure_over_kb / (_n_h(data, units) * particles_per_h)
 
 
-def _field_info(func, label_name, label_unit, vmin, vmax, cmap="viridis"):
+def _cr_ionization_rate_norm(sim):
+    """Return the CR energy-density-to-ionization-rate conversion in cgs."""
+    n_groups = int(sim.par.get("configure", {}).get("Cosmic_Ray_energy_groups", 1))
+    if n_groups <= 1:
+        return 1e-4
+
+    cr_par = sim.par.get("cr", {})
+    ev_to_erg = 1.6021773e-12
+    kinetic_min = float(cr_par.get("ekin_min", 1e9)) * ev_to_erg
+    kinetic_max = float(cr_par.get("ekin_max", 1e10)) * ev_to_erg
+    speed_of_light = ac.c.cgs.value
+    hydrogen_mass = ac.m_p.cgs.value
+
+    def momentum(kinetic_energy):
+        return np.sqrt(
+            (kinetic_energy / speed_of_light) ** 2
+            + 2.0 * kinetic_energy * hydrogen_mass
+        )
+
+    momentum_min = momentum(kinetic_min)
+    momentum_max = momentum(kinetic_max)
+    dlnp = np.log(momentum_max / momentum_min) / (n_groups - 1)
+    total_energy = np.sqrt(
+        (momentum_min * speed_of_light) ** 2 + (hydrogen_mass * speed_of_light**2) ** 2
+    )
+    spectrum = 2.13e-5 * kinetic_min**0.1 / (kinetic_min + 1.04e-3) ** 2.8
+    observed_energy = 4.0 * np.pi * total_energy * spectrum * momentum_min * dlnp
+    return 2e-16 / observed_energy
+
+
+def _cr_ionization_rate(sim):
+    ion_rate_norm = _cr_ionization_rate_norm(sim)
+    energy_floor = float(sim.par.get("cr", {}).get("ecfloor", 0.0))
+
+    def derive(data, units):
+        energy_density = data["0-Ec"] * units.energy_density.cgs.value
+        ionization_rate = np.maximum(energy_density, energy_floor) * ion_rate_norm
+        return ionization_rate / CR_ION_RATE_REFERENCE
+
+    return derive
+
+
+def _cr_ncr_coupled(sim):
+    return (
+        sim.options.get("cosmic_ray", False)
+        and int(sim.par.get("cr", {}).get("photchem_flag", 0)) != 0
+    )
+
+
+def _field_info(
+    func, label_name, label_unit, vmin, vmax, cmap="viridis", norm_class=LogNorm
+):
     label = f"{label_name}\\;{label_unit}" if label_unit else label_name
     return {
         "func": func,
         "label": label,
         "label_name": label_name,
         "label_unit": label_unit,
-        "imshow_args": {"cmap": cmap, "norm": LogNorm(vmin, vmax)},
+        "imshow_args": {"cmap": cmap, "norm": norm_class(vmin, vmax)},
     }
 
 
@@ -144,32 +195,32 @@ def get_ncr_dfi(sim):
                 _n_h,
                 r"$n_{\rm H}$",
                 r"$[\mathrm{cm^{-3}}]$",
-                1e-4,
-                1e4,
+                1e-6,
+                1e3,
                 cmap="cmr.rainforest",
             ),
             "nH2": _field_info(
                 _n_h2,
                 r"$n_{\rm H_2}$",
                 r"$[\mathrm{cm^{-3}}]$",
-                1e-4,
-                1e4,
+                1e-6,
+                1e3,
                 cmap="cmr.rainforest",
             ),
             "nHI": _field_info(
                 _n_hi,
                 r"$n_{\rm H\,I}$",
                 r"$[\mathrm{cm^{-3}}]$",
-                1e-4,
-                1e4,
+                1e-6,
+                1e3,
                 cmap="cmr.rainforest",
             ),
             "nHII": _field_info(
                 _n_hii,
                 r"$n_{\rm H\,II}$",
                 r"$[\mathrm{cm^{-3}}]$",
-                1e-4,
-                1e4,
+                1e-6,
+                1e3,
                 cmap="cmr.rainforest",
             ),
             "T": _field_info(
@@ -177,36 +228,37 @@ def get_ncr_dfi(sim):
                 r"$T$",
                 r"$[\mathrm{K}]$",
                 1e1,
-                1e7,
-                cmap="RdYlBu_r",
+                1e8,
+                cmap="managua_r",
             ),
             "Erad_LyC": _field_info(
                 _radiation_energy("LyC"),
                 r"$\mathcal{E}_{\rm LyC}$",
                 r"$[\mathrm{erg\,cm^{-3}}]$",
-                1e-18,
-                5e-11,
+                1e-20,
+                1e-11,
+                cmap="cmr.ghostlight",
             ),
             "Erad_LW": _field_info(
                 _radiation_energy("LW"),
                 r"$\mathcal{E}_{\rm LW}$",
                 r"$[\mathrm{erg\,cm^{-3}}]$",
-                1e-16,
-                5e-11,
+                1e-15,
+                1e-11,
             ),
             "Erad_PE": _field_info(
                 _radiation_energy("PE"),
                 r"$\mathcal{E}_{\rm PE}$",
                 r"$[\mathrm{erg\,cm^{-3}}]$",
-                1e-16,
-                5e-11,
+                1e-15,
+                1e-11,
             ),
             "Erad_FUV": _field_info(
                 _radiation_energy("LW", "PE"),
                 r"$\mathcal{E}_{\rm FUV}$",
                 r"$[\mathrm{erg\,cm^{-3}}]$",
-                5e-16,
-                5e-11,
+                1e-16,
+                1e-11,
             ),
             "chi_FUV": _field_info(
                 _chi_fuv,
@@ -214,6 +266,15 @@ def get_ncr_dfi(sim):
                 "",
                 1e-4,
                 1e4,
+            ),
+            "xi_cr": _field_info(
+                _cr_ionization_rate(sim),
+                r"$\xi_{\rm cr}/(2\times10^{-16}\,\mathrm{s^{-1}})$",
+                "",
+                0.0,
+                2.0,
+                cmap="cmr.cosmic",
+                norm_class=Normalize,
             ),
         }
     )
@@ -225,6 +286,8 @@ def default_slice_fields(sim):
     fields = list(NCR_MHD_FIELDS)
     if sim.options.get("cosmic_ray", False):
         fields.extend(NCR_CR_FIELDS)
+    if _cr_ncr_coupled(sim):
+        fields.extend(CR_NCR_FIELDS)
     return fields
 
 
@@ -703,6 +766,8 @@ def plot_snapshot_ncr(
     edge_fields = ["nH", "T", "vz", "pok", "Bmag", "Erad_PE", "Erad_LyC"]
     if sim.options.get("cosmic_ray", False):
         edge_fields.extend(NCR_CR_FIELDS)
+    if _cr_ncr_coupled(sim):
+        edge_fields.extend(CR_NCR_FIELDS)
 
     width_ratios, figsize = _summary_figure_size(sim, len(edge_fields))
     figure = plt.figure(figsize=figsize, constrained_layout=True)
