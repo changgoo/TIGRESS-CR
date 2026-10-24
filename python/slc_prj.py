@@ -223,22 +223,32 @@ class SliceProj:
             )
             prjdata["Sigma_EL"] = data["rho"] * data["rEL"] * conv_surf
             prjdata["EM"] = (data["rho"] * data["rEL"]) ** 2
+        # split every flux into outflow (v_z*z > 0) and inflow (v_z*z < 0) parts;
+        # f_out + f_in = f
+        if "vel3" in data:
+            vout = data["vel3"] * np.sign(data["z"])
+            for f in list(prjdata):
+                if not (f.startswith("Sigma") or f.startswith("EM")):
+                    prjdata[f"{f}_out"] = prjdata[f].where(vout > 0, 0.0)
+                    prjdata[f"{f}_in"] = prjdata[f].where(vout < 0, 0.0)
         i = axtoi[ax]
         dx = self.domain["dx"][i]
         Lx = self.domain["Lx"][i]
+        # mutually exclusive phases
+        T = data["temperature"]
+        phases = dict(
+            whole=1.0,
+            wc=T <= 2.0e4,
+            int=(T > 2.0e4) & (T <= 5.0e5),
+            hot=T > 5.0e5,
+        )
         res_ax = []
-        for phase in ["whole", "hot", "wc"]:
-            if phase == "hot":
-                cond = data["temperature"] > 2.0e4
-            elif phase == "wc":
-                cond = data["temperature"] <= 2.0e4
-            else:
-                cond = 1.0
+        for phase, cond in phases.items():
             prj = (prjdata * cond).sum(dim=ax) * dx / Lx
             for f in prjdata:
                 if f.startswith("Sigma") or f.startswith("EM"):
                     prj[f] *= Lx
             res_ax.append(prj.assign_coords(phase=phase))
         prj = xr.concat(res_ax, dim="phase")
-        prj.attrs = dict(time=data.attrs["Time"])
+        prj.attrs = dict(time=data.attrs["Time"], Tcuts=[2.0e4, 5.0e5])
         return prj

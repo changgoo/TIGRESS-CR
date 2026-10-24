@@ -63,13 +63,24 @@ class LoadSimTIGRESSPP(
         # set cooling function
         try:
             if self.par["cooling"]["coolftn"] == "tigress":
-                # cooltbl_file1 = osp.join(basedir,self.par["cooling"]["coolftn_file"])
+                cooltbl_file1 = osp.join(basedir, self.par["cooling"].get("coolftn_file", ""))
                 cooltbl_file2 = osp.join(basedir, "cool_ftn.runtime.csv")
-                try:
+                if osp.isfile(cooltbl_file2):
                     cooltbl = pd.read_csv(cooltbl_file2)
-                except FileNotFoundError:
-                    # cooltbl = pd.read_csv(cooltbl_file1)
-                    return
+                elif osp.isfile(cooltbl_file1):
+                    # input table: header lines, then columns "logT_mu mu cool heat"
+                    with open(cooltbl_file1) as fp:
+                        lines = fp.readlines()
+                    istart = [l.startswith("# logT_mu mu") for l in lines].index(True)
+                    tbl = np.loadtxt(lines[istart + 1 :])
+                    cooltbl = pd.DataFrame(
+                        dict(logT1=tbl[:, 0], mu=tbl[:, 1], Lambda=tbl[:, 2], Gamma=tbl[:, 3])
+                    )
+                else:
+                    cooltbl = None
+            else:
+                cooltbl = None
+            if cooltbl is not None:
                 from scipy.interpolate import interp1d
 
                 # Suppress divide-by-zero warning
