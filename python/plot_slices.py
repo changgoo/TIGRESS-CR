@@ -17,6 +17,29 @@ from mpi4py import MPI
 import astropy.units as au
 from matplotlib.colors import Normalize, LogNorm
 
+def _imshow_slice(data, xdim, ydim, lunit_factor, imshow_args):
+    """Draw a uniform-grid slice with imshow.
+
+    pcolormesh snaps cell edges to whole pixels, so at ~1 pixel per cell some cells are drawn
+    one pixel wider than the rest in a regular pattern (a fake grid every ~10 cells).
+    imshow resamples the image instead.
+    """
+    data = data.transpose(ydim, xdim)
+    x = data[xdim].values * lunit_factor
+    y = data[ydim].values * lunit_factor
+    dx = x[1] - x[0]
+    dy = y[1] - y[0]
+    extent = (x[0] - 0.5 * dx, x[-1] + 0.5 * dx, y[0] - 0.5 * dy, y[-1] + 0.5 * dy)
+    return plt.imshow(
+        data.values,
+        origin="lower",
+        extent=extent,
+        interpolation="antialiased",
+        cmap=imshow_args["cmap"],
+        norm=imshow_args["norm"],
+    )
+
+
 def plot_slice_xy(
     sim, slc, field, dfi, kpc=False, vec=None, st=None, stream_kwargs=dict(color="k")
 ):
@@ -31,13 +54,7 @@ def plot_slice_xy(
     # if field == "Fcr3":
     #     data = np.abs(data)
     lunit_factor = 1.0e-3 if kpc else 1
-    im = plt.pcolormesh(
-        data.x * lunit_factor,
-        data.y * lunit_factor,
-        data,
-        cmap=dfi_["imshow_args"]["cmap"],
-        norm=dfi_["imshow_args"]["norm"],
-    )
+    im = _imshow_slice(data, "x", "y", lunit_factor, dfi_["imshow_args"])
     if vec is not None:
         vx = f"{vec}1"
         vy = f"{vec}2"
@@ -65,13 +82,7 @@ def plot_slice_xz(
     # if field == "Fcr3":
     #     data = np.abs(data)
     lunit_factor = 1.0e-3 if kpc else 1
-    im = plt.pcolormesh(
-        data.x * lunit_factor,
-        data.z * lunit_factor,
-        data,
-        cmap=dfi_["imshow_args"]["cmap"],
-        norm=dfi_["imshow_args"]["norm"],
-    )
+    im = _imshow_slice(data, "x", "z", lunit_factor, dfi_["imshow_args"])
     if vec is not None:
         vx = f"{vec}1"
         vy = f"{vec}3"
