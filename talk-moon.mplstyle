@@ -1,0 +1,33 @@
+# Talk figures on the reveal.js moon theme. See shared/FIGURE_STYLE.md.
+# Use:  plt.style.use("<repo>/shared/talk-moon.mplstyle")
+
+figure.facecolor: 002b36
+axes.facecolor:   002b36
+savefig.facecolor: 002b36
+axes.edgecolor:   93a1a1
+axes.labelcolor:  eee8d5
+text.color:       eee8d5
+xtick.color:      93a1a1
+ytick.color:      93a1a1
+
+font.size:        25
+axes.titlesize:   25
+legend.fontsize:  20
+mathtext.fontset: stixsans
+
+axes.linewidth:    1.5
+xtick.major.width: 1.5
+ytick.major.width: 1.5
+lines.linewidth:   3
+lines.markersize:  12
+
+axes.spines.top:   False
+axes.spines.right: False
+legend.frameon:    False
+
+savefig.dpi:        150
+savefig.bbox:       tight
+savefig.pad_inches: 0.15
+
+# solarized accents in a fixed order: blue, red, green, orange, violet, magenta, cyan, yellow
+axes.prop_cycle: cycler('color', ['268bd2', 'dc322f', '859900', 'cb4b16', '6c71c4', 'd33682', '2aa198', 'b58900'])
