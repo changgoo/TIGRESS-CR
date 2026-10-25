@@ -1082,7 +1082,7 @@ def plot_slices_cr(
 
 if __name__ == "__main__":
     COMM = MPI.COMM_WORLD
-    spp = LoadSimTIGRESSPP(sys.argv[1], verbose=COMM.rank == 0)
+    spp = LoadSimTIGRESSPP(sys.argv[1], savdir=sys.argv[2], verbose=COMM.rank == 0)
     spp.update_derived_fields()
     spp.dt = [spp.par[f"output{i + 1}"]["dt"] for i, v in enumerate(spp.out_fmt)]
 
@@ -1098,12 +1098,12 @@ if __name__ == "__main__":
             plt.close(f)
             head = "ncr"
         else:
-            f = plot_projections(spp, num)
-            plt.close(f)
+            # f = plot_projections(spp, num)
+            # plt.close(f)
             if spp.options["cosmic_ray"]:
                 f = plot_slices(spp, num)
                 plt.close(f)
-                plot_acoustic(spp, num)
+                # plot_acoustic(spp, num)
                 flist = [
                     "nH",
                     "T",
@@ -1183,31 +1183,31 @@ if __name__ == "__main__":
     COMM.barrier()
 
     if COMM.rank == 0:
-        if not osp.isdir(osp.join(spp.basedir, "movies")):
-            os.mkdir(osp.join(spp.basedir, "movies"))
+        if not osp.isdir(osp.join(spp.savdir, "movies")):
+            os.mkdir(osp.join(spp.savdir, "movies"))
         if head == "cr":
-            fin = osp.join(spp.basedir, f"{head}_snapshot/*.png")
-            fout = osp.join(spp.basedir, f"movies/{spp.basename}_{head}_snapshot.mp4")
+            fin = osp.join(spp.savdir, f"{head}_snapshot/*.png")
+            fout = osp.join(spp.savdir, f"movies/{spp.basename}_{head}_snapshot.mp4")
             try:
                 make_movie(fin, fout, fps_in=15, fps_out=15)
             except FileNotFoundError:
                 pass
-        fin = osp.join(spp.basedir, f"{head}_slices/*.png")
-        fout = osp.join(spp.basedir, f"movies/{spp.basename}_{head}_slices.mp4")
+        fin = osp.join(spp.savdir, f"{head}_slices/*.png")
+        fout = osp.join(spp.savdir, f"movies/{spp.basename}_{head}_slices.mp4")
         try:
             make_movie(fin, fout, fps_in=15, fps_out=15)
         except FileNotFoundError:
             pass
 
-        fin = osp.join(spp.basedir, f"{head}_snapshot_prj/*.png")
-        fout = osp.join(spp.basedir, f"movies/{spp.basename}_{head}_snapshot_prj.mp4")
+        fin = osp.join(spp.savdir, f"{head}_snapshot_prj/*.png")
+        fout = osp.join(spp.savdir, f"movies/{spp.basename}_{head}_snapshot_prj.mp4")
         try:
             make_movie(fin, fout, fps_in=15, fps_out=15)
         except FileNotFoundError:
             pass
 
-        fin = osp.join(spp.basedir, "snapshot/*.png")
-        fout = osp.join(spp.basedir, f"movies/{spp.basename}_snapshot.mp4")
+        fin = osp.join(spp.savdir, "snapshot/*.png")
+        fout = osp.join(spp.savdir, f"movies/{spp.basename}_snapshot.mp4")
         try:
             make_movie(fin, fout, fps_in=15, fps_out=15)
         except FileNotFoundError:

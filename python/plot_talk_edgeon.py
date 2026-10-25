@@ -12,6 +12,8 @@ Usage
     python plot_talk_edgeon.py --num 600
     # all snapshots + movies (parallel)
     mpirun -n <N> python plot_talk_edgeon.py --movie
+    # R8 models (caches and figures under <outdir>/R8_{mhd,crmhd}/)
+    mpirun -n <N> python plot_talk_edgeon.py --suite R8 --movie
 """
 
 import argparse
@@ -30,10 +32,24 @@ from load_sim_tigresspp import LoadSimTIGRESSPP
 from movie_utils import make_movie
 from plot_slices import _imshow_slice
 
-basedir_root = "/projects/EOSTRIKE/TIGRESSPP-CR/"
-models = dict(
-    mhd="midtall_LGR4_mhd_duale-8pc-b1-mhdbc_diode-fgas_0.90-r200-t2.5-icpx",
-    crmhd="6kpc_LGR4_crmhd_duale-8pc-b1-mhdbc_diode-crbc_lngrad_out-fgas_0.90-r200-t2.5-icpx",
+# cache_in_outdir: basedir is not writable, so prj.y caches go to <outdir>/<suite>_<model>
+suites = dict(
+    LGR4=dict(
+        root="/projects/EOSTRIKE/TIGRESSPP-CR/",
+        cache_in_outdir=False,
+        models=dict(
+            mhd="midtall_LGR4_mhd_duale-8pc-b1-mhdbc_diode-fgas_0.90-r200-t2.5-icpx",
+            crmhd="6kpc_LGR4_crmhd_duale-8pc-b1-mhdbc_diode-crbc_lngrad_out-fgas_0.90-r200-t2.5-icpx",
+        ),
+    ),
+    R8=dict(
+        root="/scratch/gpfs/EOST/ronan/",
+        cache_in_outdir=True,
+        models=dict(
+            mhd="R8_mhd_duale-8pc-b1-mhdbc_diode-fgas_0.90-r200-icpx",
+            crmhd="6kpc_R8_crmhd-8pc-b1-mhdbc_diode-crbc_lngrad_out-fgas_0.90-r200-t2.5-icpx",
+        ),
+    ),
 )
 model_name = dict(mhd="MHD", crmhd="CRMHD")
 outdir_default = "/scratch/gpfs/EOST/changgoo/talk_figures/"
@@ -101,7 +117,13 @@ def _decorate(sim, fig, axes, im_list, labels, zmin, tMyr, name, ticks=None):
 
 @plt.rc_context(talk_rc)
 def plot_talk_slices(sim, num, name, zmin=-500, flist=("nH", "T", "vz"), savdir=None):
-    slc = sim.get_slice(num, "allslc.y", slc_kwargs=dict(y=0, method="nearest"))
+    # existing slice caches always live in basedir, even when savdir is elsewhere
+    slc = sim.get_slice(
+        num,
+        "allslc.y",
+        savdir=osp.join(sim.basedir, "allslc.y"),
+        slc_kwargs=dict(y=0, method="nearest"),
+    )
     slc = slc.sel(z=slice(zmin, None))
     fig, axes = _setup_axes(sim, len(flist), zmin)
     im_list, labels = [], []
@@ -189,19 +211,27 @@ def plot_talk_outflow_phase(sim, num, name, zmin=-500, savdir=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--suite", choices=list(suites), default="LGR4")
     parser.add_argument("--model", choices=["mhd", "crmhd", "all"], default="all")
     parser.add_argument("--num", type=int, default=None, help="single snapshot")
     parser.add_argument("--zmin", type=float, default=-500.0)
-    parser.add_argument("--basedir-root", default=basedir_root, help="parent of model dirs")
+    parser.add_argument("--basedir-root", default=None, help="parent of model dirs")
     parser.add_argument("--outdir", default=outdir_default)
     parser.add_argument("--movie", action="store_true", help="make mp4 at the end")
     args = parser.parse_args()
 
     COMM = MPI.COMM_WORLD
+    suite = suites[args.suite]
+    models = suite["models"]
+    root = suite["root"] if args.basedir_root is None else args.basedir_root
     mlist = list(models) if args.model == "all" else [args.model]
     for m in mlist:
-        sim = LoadSimTIGRESSPP(osp.join(args.basedir_root, models[m]), verbose=False)
-        savdir = osp.join(args.outdir, f"LGR4_{m}")
+        savdir = osp.join(args.outdir, f"{args.suite}_{m}")
+        sim = LoadSimTIGRESSPP(
+            osp.join(root, models[m]),
+            savdir=savdir if suite["cache_in_outdir"] else None,
+            verbose=False,
+        )
         nums = [args.num] if args.num is not None else sim.nums
         mynums = nums[COMM.rank :: COMM.size]
         for num in mynums:
@@ -215,5 +245,5 @@ if __name__ == "__main__":
         if args.movie and COMM.rank == 0:
             for kind in ["slc", "prj", "flx"]:
                 fin = osp.join(savdir, f"{kind}_*.png")
-                fout = osp.join(args.outdir, f"LGR4_{m}_{kind}.mp4")
+                fout = osp.join(args.outdir, f"{args.suite}_{m}_{kind}.mp4")
                 make_movie(fin, fout, fps_in=15, fps_out=15)
