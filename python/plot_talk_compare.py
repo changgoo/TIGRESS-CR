@@ -28,11 +28,18 @@ Data: <basedir-root>/<model dir> with model dirs from plot_talk_edgeon.suites.
 The default root is the suite's root, or /projects/EOSTRIKE/TIGRESSPP-CR/ if
 that does not exist on this machine (both suites are there on stellar).
 
+The moon figures (2, 4-6) are drawn from a compact per-model cache,
+<cachedir>/<suite>_<model>.nc (default analysis/reduced/talk_compare/), with the
+history, SN energy rate and per-snapshot momentum, pressure and loading profiles
+(see build_talk_cache). It is written from the full data when missing (or with
+--rebuild-cache); with --from-cache those figures need no raw data at all.
+
 Usage
 -----
     python plot_talk_compare.py             # all LGR4 figures
     python plot_talk_compare.py --suite R8  # all R8 figures
     python plot_talk_compare.py --fig 1 3   # selected figures
+    python plot_talk_compare.py --fig 2 4 5 6 --from-cache  # moon figures from the cache
 """
 
 import argparse
@@ -230,7 +237,8 @@ def sn_energy_rate(s, dt=1.0, window=10):
 
 moon_style = osp.join(osp.dirname(osp.abspath(__file__)), "..", "talk-moon.mplstyle")
 moon_color = dict(mhd="#93a1a1", crmhd="#cb4b16")
-moon_name = dict(mhd="without CRs", crmhd="with CRs")
+moon_name = dict(mhd="MHD", crmhd="CRMHD")
+cr_color = "#859900"  # solarized olive, as for the CR terms in momentum/pressure
 moon_muted = "#93a1a1"
 
 
@@ -248,13 +256,7 @@ def _history_moon(curves, trange, title, ylabel, savname, savdir=None):
         ax.set_title(title, loc="left")
         ax.set_ylabel(ylabel)
         ax.set_xlabel("time $t$ [Myr]")
-        t0, t1 = trange["avg"]
-        leg = ax.legend(
-            loc="upper left", bbox_to_anchor=(1.01, 1.0), borderaxespad=0,
-            title=f"{suite}\ndashed: mean over\n{t0:.0f}-{t1:.0f} Myr",
-        )  # fmt: skip
-        leg.get_title().set_color(moon_muted)
-        leg._legend_box.align = "left"
+        ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), borderaxespad=0)
         if savdir is not None:
             os.makedirs(savdir, exist_ok=True)
             fig.savefig(osp.join(savdir, f"{savname}.png"))
@@ -262,25 +264,24 @@ def _history_moon(curves, trange, title, ylabel, savname, savdir=None):
     return fig
 
 
-def plot_history(sims, savdir=None):
+def plot_history(caches, savdir=None):
     """SFR (10 Myr) and SN energy injection rate as two moon-theme figures.
 
     Curves span the common history range of both models; dashed lines are means
-    over the common averaging window s.tslice_Myr (shaded).
+    over the common averaging window (shaded).
     """
-    tavg = (next(iter(sims.values())).tslice_Myr.start,
-            next(iter(sims.values())).tslice_Myr.stop)  # fmt: skip
+    c0 = next(iter(caches.values()))
+    tavg = (c0.attrs["tstart_Myr"], c0.attrs["tend_Myr"])
     trange = dict(
-        plot=(max(s.hst["time"].min() for s in sims.values()),
-              min(s.hst["time"].max() for s in sims.values())),
+        plot=(max(float(c["t_hst"].min()) for c in caches.values()),
+              min(float(c["t_hst"].max()) for c in caches.values())),
         avg=tavg,
     )  # fmt: skip
     sfr, snE = {}, {}
-    for m, s in sims.items():
-        tsn, Edot = sn_energy_rate(s)
+    for m, c in caches.items():
         for out, t, y, f in [
-            (sfr, s.hst["time"].values, s.hst["sfr10"].values, "sfr10"),
-            (snE, tsn, Edot * 1.0e-47, "Edot_SN"),
+            (sfr, c["t_hst"].values, c["sfr10"].values, "sfr10"),
+            (snE, c["t_sn"].values, c["Edot_SN"].values * 1.0e-47, "Edot_SN"),
         ]:
             avg = np.mean(y[(t >= tavg[0]) & (t <= tavg[1])])
             out[m] = (t, y, avg)
@@ -441,19 +442,27 @@ def momentum_transfer_terms(s, zmin, zmax, zref):
     return terms
 
 
-def plot_momentum_moon(sims, zmin, zmax, zref, reflabel, savname, savdir=None):
+# (zmin, zmax, zref) [pc] of the two momentum-transfer figures
+momentum_ranges = dict(upper=(1000, 4000, 1000), lower=(0, 1000, 0))
+
+
+def plot_momentum_moon(caches, tag, reflabel, savname, savdir=None):
     """Moon-theme momentum transfer, one panel per run (upper half, zmin < z < zmax)."""
+    zmin, zmax, _ = momentum_ranges[tag]
     style = dict(
         warm=dict(color="#268bd2", lw=4, label="net gain by warm/cold gas"),
         hot=dict(color="#dc322f", lw=3, label="from hot gas"),
         cr=dict(color="#859900", lw=3, ls="--", label="from CRs"),
     )
     with plt.style.context(["default", moon_style]):
-        fig, axes = plt.subplots(1, len(sims), figsize=(12, 5), sharey=True)
-        for ax, (m, s) in zip(axes, sims.items()):
-            terms = momentum_transfer_terms(s, zmin, zmax, zref)
-            for k, da in terms.items():
-                z = da.z * 1.0e-3
+        fig, axes = plt.subplots(1, len(caches), figsize=(12, 5), sharey=True)
+        for ax, (m, c) in zip(axes, caches.items()):
+            for k in style:
+                v = f"mom_{tag}_{k}"
+                if v not in c:
+                    continue
+                da = c[v]
+                z = da[f"z_{tag}"] * 1.0e-3
                 ax.plot(z, da.mean(dim="time"), **style[k])
                 if k == "warm":
                     q = da.quantile([0.16, 0.84], dim="time")
@@ -466,16 +475,8 @@ def plot_momentum_moon(sims, zmin, zmax, zref, reflabel, savname, savdir=None):
             ax.set_xlim(zmin * 1.0e-3, zmax * 1.0e-3)
             ax.set_xlabel("height $z$ [kpc]")
         axes[0].set_ylabel("momentum transfer\n" + reflabel)
-        t0, t1 = s.tslice_Myr.start, s.tslice_Myr.stop
         handles = [Line2D([], [], **style[k]) for k in style]
-        leg = fig.legend(
-            handles=handles, loc="upper left", bbox_to_anchor=(1.0, 0.9),
-            borderaxespad=0,
-            title=f"{suite}, upper half\nmean {t0:.0f}-{t1:.0f} Myr\n"
-                  r"warm/cold: $T<2\times10^4$ K" "\n" r"hot: $T>2\times10^4$ K",
-        )  # fmt: skip
-        leg.get_title().set_color(moon_muted)
-        leg._legend_box.align = "left"
+        fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.0, 0.9), borderaxespad=0)
         fig.tight_layout()
         if savdir is not None:
             os.makedirs(savdir, exist_ok=True)
@@ -484,16 +485,16 @@ def plot_momentum_moon(sims, zmin, zmax, zref, reflabel, savname, savdir=None):
     return fig
 
 
-def plot_momentum_talk(sims, savdir=None):
+def plot_momentum_talk(caches, savdir=None):
     """Moon-theme momentum transfer above and below 1 kpc."""
     figs = [
         plot_momentum_moon(
-            sims, 1000, 4000, 1000,
+            caches, "upper",
             r"$\langle\Delta P\rangle/\langle P_{\rm MHD}^{\rm wc}(1\,{\rm kpc})\rangle$",
             f"{suite}_momentum_transfer_upper_moon", savdir,
         ),
         plot_momentum_moon(
-            sims, 0, 1000, 0,
+            caches, "lower",
             r"$\langle\Delta P\rangle/\langle P_{\rm MHD}^{\rm wc}(0)\rangle$",
             f"{suite}_momentum_transfer_lower_moon", savdir,
         ),
@@ -540,21 +541,24 @@ def pressure_profiles(s, phase="all"):
     return out
 
 
-def plot_pressure(sims, phase="all", zmax=5, savdir=None):
+def plot_pressure(caches, phase="all", zmax=5, savdir=None):
     """Moon-theme P_MHD (both runs) and P_CR (with CRs) vs |z| for one phase."""
     styles = {
-        ("mhd", "mhd"): dict(color=moon_color["mhd"], label=r"$P_{\rm MHD}$, without CRs"),
-        ("crmhd", "mhd"): dict(color=moon_color["crmhd"], label=r"$P_{\rm MHD}$, with CRs"),
-        ("crmhd", "cr"): dict(color="#859900", ls="--", label=r"$P_{\rm CR}$, with CRs"),
+        ("mhd", "mhd"): dict(color=moon_color["mhd"], label=r"$P_{\rm MHD}$, MHD"),
+        ("crmhd", "mhd"): dict(color=moon_color["crmhd"], label=r"$P_{\rm MHD}$, CRMHD"),
+        ("crmhd", "cr"): dict(color="#859900", ls="--", label=r"$P_{\rm CR}$, CRMHD"),
     }  # fmt: skip
-    tag = dict(all="all gas", wc="warm/cold gas\n" r"($T<2\times10^4$ K)")[phase]
+    tag = dict(all=None, wc="warm/cold gas")[phase]  # short panel title (none for all gas)
     zvals = [0, 0.5, 1, 2, 4]
     with plt.style.context(["default", moon_style]):
         fig, ax = plt.subplots(figsize=(9, 5.5))
-        for m, s in sims.items():
-            for k, (da, mean) in pressure_profiles(s, phase).items():
+        for m, c in caches.items():
+            for k in ["mhd", "cr"]:
+                if f"P_{phase}_{k}" not in c:
+                    continue
+                da, mean = c[f"P_{phase}_{k}"], c[f"Pmean_{phase}_{k}"]
                 st = styles[(m, k)]
-                z = da.z * 1.0e-3
+                z = da.zabs * 1.0e-3
                 q = da.quantile([0.16, 0.84], dim="time")
                 ax.fill_between(z, q.isel(quantile=0), q.isel(quantile=1),
                                 color=st["color"], alpha=0.2, lw=0)  # fmt: skip
@@ -566,15 +570,10 @@ def plot_pressure(sims, phase="all", zmax=5, savdir=None):
         ax.set_xlim(0, zmax)
         ax.set_xlabel("height $|z|$ [kpc]")
         ax.set_ylabel(r"pressure $P/k_B$ [${\rm K\,cm^{-3}}$]")
-        s = next(iter(sims.values()))
-        t0, t1 = s.tslice_Myr.start, s.tslice_Myr.stop
         ax.set_ylim(*pressure_ylim[suite])
-        leg = ax.legend(
-            loc="upper left", bbox_to_anchor=(1.02, 1.0), borderaxespad=0,
-            title=f"{suite}, {tag}\nmean {t0:.0f}-{t1:.0f} Myr",
-        )  # fmt: skip
-        leg.get_title().set_color(moon_muted)
-        leg._legend_box.align = "left"
+        if tag:
+            ax.set_title(tag, loc="left")
+        ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
         if savdir is not None:
             name = f"{suite}_pressure_z_moon" if phase == "all" else f"{suite}_pressure_z_{phase}_moon"
             os.makedirs(savdir, exist_ok=True)
@@ -583,12 +582,12 @@ def plot_pressure(sims, phase="all", zmax=5, savdir=None):
     return fig
 
 
-def plot_loading(sims, zmax=5, savdir=None):
+def plot_loading(caches, zmax=5, savdir=None):
     """Outflow mass and energy loading vs |z| for all gas (both hemispheres), moon theme.
 
     eta = time-mean outflow (v_z*z>0) flux over the common window, normalized by
     the SN-driven reference flux from the mean sfr40 (see ref_fluxes). Solid:
-    MHD (gas) flux; dashed: CR flux. Bands are the 16-84th percentiles in time.
+    MHD (gas) flux in the run colour; dashed olive: CR flux. Bands are the 16-84th percentiles in time.
     """
     panels = [
         ("mflux", None, "mass loading", r"$\eta_M$"),
@@ -597,23 +596,21 @@ def plot_loading(sims, zmax=5, savdir=None):
     zvals = [1, 2, 3, 4]
     with plt.style.context(["default", moon_style]):
         fig, axes = plt.subplots(1, len(panels), figsize=(10, 5), sharex=True)
-        for m, s in sims.items():
-            ref = ref_fluxes(s)
-            dset = update_flux(s, s.zprof.sel(time=s.tslice), vz_dir=1, both=True)
-            c = moon_color[m]
+        for m, c in caches.items():
             for ax, (f, fcr, _, _) in zip(axes, panels):
-                plt.sca(ax)
                 for ff, ls in [(f, "-"), (fcr, "--")]:
-                    if ff is None or ff not in dset:
+                    if ff is None or f"eta_{ff}" not in c:
                         continue
-                    ps.plot_zprof(
-                        dset, ff, all_phases, norm=ref[ff], line="mean", color=c,
-                        ls=ls, lw=3, quantile=(ls == "-"),
-                    )  # fmt: skip
+                    eta = c[f"eta_{ff}"]
+                    z = eta.zf * 1.0e-3
+                    col = moon_color[m] if ls == "-" else cr_color
+                    ax.plot(z, eta.mean(dim="time"), color=col, ls=ls, lw=3)
+                    if ls == "-":  # as ps.plot_zprof(line="mean", quantile=True)
+                        q = eta.quantile([0.16, 0.84], dim="time")
+                        ax.fill_between(z, q.isel(quantile=0), q.isel(quantile=1),
+                                        color=col, alpha=0.2, lw=0)  # fmt: skip
                     # loading factors at a few heights, for quoting in the talk
-                    eta = dset[ff].sel(phase=all_phases).sum(dim="phase")
-                    eta = eta.mean(dim="time") / ref[ff]
-                    vals = np.interp(zvals, dset.z * 1.0e-3, eta)
+                    vals = np.interp(zvals, z, eta.mean(dim="time"))
                     print(f"{model_name[m]:5s} eta[{ff}] at {zvals} kpc:",
                           np.array2string(vals, precision=3))  # fmt: skip
         for ax, (_, _, title, label) in zip(axes, panels):
@@ -623,29 +620,87 @@ def plot_loading(sims, zmax=5, savdir=None):
             ax.set_xlabel("height $|z|$ [kpc]")
         axes[0].set_xlim(0, zmax)
         axes[0].set_xticks(np.arange(0, zmax + 0.1, 2))
-        t0, t1 = next(iter(sims.values())).tslice_Myr.start, next(
-            iter(sims.values())
-        ).tslice_Myr.stop
         run_handles = [
-            Line2D([], [], color=moon_color[m], lw=3, label=moon_name[m]) for m in sims
+            Line2D([], [], color=moon_color[m], lw=3, label=moon_name[m]) for m in caches
         ]
         flux_handles = [
             Line2D([], [], color="#eee8d5", lw=3, label="gas flux"),
-            Line2D([], [], color="#eee8d5", lw=3, ls="--", label="CR flux"),
+            Line2D([], [], color=cr_color, lw=3, ls="--", label="CR flux"),
         ]
-        leg = fig.legend(
-            handles=run_handles + flux_handles, loc="upper left",
-            bbox_to_anchor=(1.0, 0.92), borderaxespad=0,
-            title=f"{suite}, all gas, outflow\nmean {t0:.0f}-{t1:.0f} Myr",
-        )  # fmt: skip
-        leg.get_title().set_color(moon_muted)
-        leg._legend_box.align = "left"
+        fig.legend(handles=run_handles + flux_handles, loc="upper left",
+                   bbox_to_anchor=(1.0, 0.92), borderaxespad=0)
         fig.tight_layout()
         if savdir is not None:
             os.makedirs(savdir, exist_ok=True)
             fig.savefig(osp.join(savdir, f"{suite}_loading_z_moon.png"))
             print("saved", osp.join(savdir, f"{suite}_loading_z_moon.png"))
     return fig
+
+
+# ---------------------------------------------------------------- compact cache
+cachedir_default = "/scratch/gpfs/EOST/changgoo/analysis/reduced/talk_compare/"
+
+
+def cache_file(cachedir, m):
+    return osp.join(cachedir, f"{suite}_{m}.nc")
+
+
+def build_talk_cache(s, m):
+    """Compact inputs of the moon figures (2, 4-6) for one model, from the full data.
+
+    Everything is already reduced to what the figures plot: the history (sfr10,
+    sfr40, SN energy rate) and, per snapshot in the common window, the momentum
+    transfer terms, the folded pressure profiles and the outflow loading
+    profiles (normalised by ref_fluxes). Time is in code units like the zprof.
+    """
+    h = s.hst
+    tsn, Edot = sn_energy_rate(s)
+    c = xr.Dataset(
+        dict(
+            sfr10=("t_hst", h["sfr10"].values),
+            sfr40=("t_hst", h["sfr40"].values),
+            Edot_SN=("t_sn", Edot),
+        ),
+        coords=dict(t_hst=h["time"].values, t_sn=tsn),
+    )
+    c["sfr10"].attrs["units"] = c["sfr40"].attrs["units"] = "Msun kpc-2 yr-1"
+    c["Edot_SN"].attrs["units"] = "erg kpc-2 yr-1"
+    c["t_hst"].attrs["units"] = c["t_sn"].attrs["units"] = "Myr"
+    for tag, (zmin, zmax, zref) in momentum_ranges.items():
+        for k, da in momentum_transfer_terms(s, zmin, zmax, zref).items():
+            c[f"mom_{tag}_{k}"] = da.rename(z=f"z_{tag}").drop_vars("phase", errors="ignore")
+    for phase in ["all", "wc"]:
+        for k, (da, mean) in pressure_profiles(s, phase).items():
+            c[f"P_{phase}_{k}"] = da.rename(z="zabs")
+            c[f"Pmean_{phase}_{k}"] = mean.rename(z="zabs")
+            c[f"P_{phase}_{k}"].attrs["units"] = "K cm-3"
+    ref = ref_fluxes(s)
+    dset = update_flux(s, s.zprof.sel(time=s.tslice), vz_dir=1, both=True)
+    for ff in ["mflux", "eflux_MHD", "eflux_CR"]:
+        if ff in dset:
+            eta = dset[ff].sel(phase=all_phases).sum(dim="phase") / ref[ff]
+            c[f"eta_{ff}"] = eta.rename(z="zf")
+            c[f"ref_{ff}"] = ref[ff]
+    c = c.drop_vars([v for v in ["vz_dir", "quantile"] if v in c.coords])
+    c.attrs = dict(
+        suite=suite, model=m, basedir=s.basedir,
+        tstart_Myr=float(s.tslice_Myr.start), tend_Myr=float(s.tslice_Myr.stop),
+        time_units="code (pc/(km/s))", Myr_per_code_time=float(s.u.Myr),
+        made_by="TIGRESS-CR/python/plot_talk_compare.py build_talk_cache",
+    )  # fmt: skip
+    return c
+
+
+def write_cache(c, fname):
+    os.makedirs(osp.dirname(fname), exist_ok=True)
+    enc = {v: dict(zlib=True, complevel=4) for v in c.data_vars}
+    for v in c.data_vars:
+        if c[v].dtype == np.float64 and c[v].ndim == 2:
+            enc[v]["dtype"] = "float32"  # profiles; plenty for figures
+    tmp = fname + ".tmp"
+    c.to_netcdf(tmp, encoding=enc)
+    os.replace(tmp, fname)
+    print("wrote cache", fname, f"({os.path.getsize(fname) / 1e6:.1f} MB)")
 
 
 if __name__ == "__main__":
@@ -657,34 +712,63 @@ if __name__ == "__main__":
     parser.add_argument("--zmax", type=float, default=5.0, help="|z| limit [kpc]")
     parser.add_argument("--basedir-root", default=None, help="parent of model dirs")
     parser.add_argument("--outdir", default=outdir_default)
+    parser.add_argument("--cachedir", default=cachedir_default,
+                        help="compact cache of the moon-figure inputs")  # fmt: skip
+    parser.add_argument("--from-cache", action="store_true",
+                        help="draw only the moon figures (2, 4-6) from --cachedir; "
+                        "no raw data needed")  # fmt: skip
+    parser.add_argument("--rebuild-cache", action="store_true")
     args = parser.parse_args()
 
     suite = args.suite
     models = suites[suite]["models"]
-    root = args.basedir_root
-    if root is None:
-        root = suites[suite]["root"]
-        root = root if osp.isdir(root) else basedir_fallback
     savdir = osp.join(args.outdir, f"{suite}_compare")
-    need_zprof = bool(set(args.fig) - {2})
-    sims = {m: load_sim(m, root, need_zprof) for m in models}
-    for m, s in sims.items():
-        s.key = m
-    set_common_window(sims, args.tstart)
-    ps.setup(savdir, model_name, model_color, zlim_=args.zmax)
+    moon_figs = set(args.fig) & {2, 4, 5, 6}
+    cfiles = {m: cache_file(args.cachedir, m) for m in models}
+
+    if args.from_cache:
+        caches = {m: xr.load_dataset(f) for m, f in cfiles.items()}
+        sims = None
+    else:
+        root = args.basedir_root
+        if root is None:
+            root = suites[suite]["root"]
+            root = root if osp.isdir(root) else basedir_fallback
+        need_zprof = bool(set(args.fig) - {2}) or args.rebuild_cache or not all(
+            osp.isfile(f) for f in cfiles.values())  # fmt: skip
+        sims = {m: load_sim(m, root, need_zprof) for m in models}
+        for m, s in sims.items():
+            s.key = m
+        set_common_window(sims, args.tstart)
+        ps.setup(savdir, model_name, model_color, zlim_=args.zmax)
+        caches = {}
+        for m, s in sims.items():
+            if moon_figs and (args.rebuild_cache or not osp.isfile(cfiles[m])):
+                write_cache(build_talk_cache(s, m), cfiles[m])
+            if moon_figs:
+                caches[m] = xr.load_dataset(cfiles[m])
+                assert np.isclose(caches[m].attrs["tstart_Myr"], s.tslice_Myr.start) and \
+                    np.isclose(caches[m].attrs["tend_Myr"], s.tslice_Myr.stop), \
+                    f"cache {cfiles[m]} has another window; use --rebuild-cache"  # fmt: skip
+    if args.from_cache:
+        bad = set(args.fig) - moon_figs
+        assert not bad, f"--from-cache only draws figures 2, 4-6 (not {sorted(bad)})"
+        c0 = next(iter(caches.values()))
+        print(f"from cache: window {c0.attrs['tstart_Myr']:g}-{c0.attrs['tend_Myr']:.1f} Myr")
 
     if 1 in args.fig:
         plot_massflux_tz(sims, savdir=savdir)
     if 2 in args.fig:
-        plot_history(sims, savdir=savdir)
+        plot_history(caches, savdir=savdir)
     if 3 in args.fig:
         plot_flux_pdf(sims, zlist=(500, 1000, 3000), savdir=savdir)
     if 4 in args.fig:
-        plot_momentum(sims, savdir=savdir)
-        plot_momentum_talk(sims, savdir=savdir)
+        if sims is not None:
+            plot_momentum(sims, savdir=savdir)
+        plot_momentum_talk(caches, savdir=savdir)
     if 5 in args.fig:
-        plot_loading(sims, zmax=args.zmax, savdir=savdir)
+        plot_loading(caches, zmax=args.zmax, savdir=savdir)
     if 6 in args.fig:
         for phase in ["all", "wc"]:
-            plot_pressure(sims, phase=phase, zmax=args.zmax, savdir=savdir)
+            plot_pressure(caches, phase=phase, zmax=args.zmax, savdir=savdir)
     plt.close("all")
